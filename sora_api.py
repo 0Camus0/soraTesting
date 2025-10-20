@@ -217,7 +217,7 @@ class SoraAPIClient:
             print(f"Request Error: {e}")
             raise
     
-    def wait_for_completion(self, video_id, poll_interval=3, max_wait_time=600, show_progress=True):
+    def wait_for_completion(self, video_id, poll_interval=3, max_wait_time=60000, show_progress=True):
         """
         Wait for a video job to complete by polling its status
         
