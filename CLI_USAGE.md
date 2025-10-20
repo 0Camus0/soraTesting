@@ -2,14 +2,24 @@
 
 ## Overview
 
-The Sora API client now includes a comprehensive command-line interface (CLI) that allows you to interact with all API endpoints directly from the terminal.
+The Sora API client includes a comprehensive command-line interface (CLI) that allows you to interact with all API endpoints directly from the terminal.
 
 ## Prerequisites
 
-Before using the CLI, make sure to set up your API key:
-
+1. Install dependencies:
 ```bash
-setup_env.bat
+pip install -r requirements.txt
+```
+
+2. Set up your API key in `.env` file:
+```bash
+# Create .env file in project root
+OPENAI_API_KEY=sk-proj-your-actual-api-key-here
+```
+
+3. Navigate to the API directory:
+```bash
+cd src/api
 ```
 
 ## Available Commands
@@ -31,25 +41,7 @@ python sora_api.py create \
   --wait
 ```
 
-#### Using a JSON File
-```bash
-python sora_api.py create --file create_params.json --wait
-```
-
-The `create_params.json` template includes:
-```json
-{
-  "prompt": "Your video description here",
-  "model": "sora-2",
-  "seconds": "5",
-  "size": "1920x1080",
-  "wait": true,
-  "no_save": false
-}
-```
-
 **Options:**
-- `--file FILE` - Load parameters from JSON file
 - `--prompt PROMPT` - Video generation prompt (required if not using --file)
 - `--model MODEL` - Model to use (default: sora-2)
 - `--seconds SECONDS` - Video duration in seconds

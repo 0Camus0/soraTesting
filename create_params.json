@@ -1,8 +1,0 @@
-{
-  "prompt": "A serene sunset over a calm ocean, with gentle waves lapping at the shore and seagulls flying in the distance",
-  "model": "sora-2",
-  "seconds": "5",
-  "size": "1920x1080",
-  "wait": true,
-  "no_save": false
-}

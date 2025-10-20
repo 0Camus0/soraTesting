@@ -22,7 +22,8 @@ For a visual, user-friendly experience:
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the web server
+# Run the web server from the src/app directory
+cd src/app
 python web_app.py
 ```
 
@@ -32,7 +33,15 @@ Then open **http://localhost:5000** in your browser.
 
 ### Command-Line Interface
 
-For automation and scripting, use the CLI (see below).
+For automation and scripting, use the CLI:
+
+```bash
+# Run from the src/api directory
+cd src/api
+python sora_api.py create --prompt "A sunset over the ocean" --wait
+```
+
+📖 See [CLI_USAGE.md](CLI_USAGE.md) for detailed CLI documentation.
 
 ## Setup
 
@@ -57,7 +66,7 @@ pip install -r requirements.txt
 
 **Important**: Your API key should NEVER be committed to the repository.
 
-To set up your API key, create a `.env` file in the project root:
+Create a `.env` file in the project root:
 
 ```bash
 # .env file
@@ -66,101 +75,40 @@ OPENAI_API_KEY=sk-proj-your-actual-api-key-here
 
 The `.env` file is automatically ignored by git and will be loaded by the API client.
 
-**Alternative method:**
-- Set environment variable manually: `$env:OPENAI_API_KEY="your-key-here"` (PowerShell)
-
 ## Usage
+
+### Web Interface
+
+The web interface provides an intuitive GUI for:
+- Creating videos from text prompts
+- Remixing existing videos
+- Viewing gallery with video thumbnails and animated previews
+- Downloading videos locally
+- Managing and deleting videos
+
+See [WEB_INTERFACE.md](WEB_INTERFACE.md) for complete documentation.
 
 ### Command-Line Interface
 
-The client provides a comprehensive CLI for all operations:
+For detailed CLI usage, see [CLI_USAGE.md](CLI_USAGE.md).
 
-#### Create a Video
+Quick examples:
 
 ```bash
-# Create from command-line arguments
+# Navigate to the API directory
+cd src/api
+
+# Create a video
 python sora_api.py create --prompt "A sunset over the ocean" --wait
 
-# Create with specific parameters
-python sora_api.py create --prompt "A majestic eagle" --seconds "10" --size "1920x1080" --wait
-
-# Create from a JSON file
-python sora_api.py create --file create_params.json --wait
-```
-
-#### Remix a Video
-
-```bash
+# Remix a video
 python sora_api.py remix --video-id video_abc123 --prompt "Make it sunrise instead" --wait
-```
 
-#### List Videos
-
-```bash
-# List recent videos
+# List videos
 python sora_api.py list --limit 20
 
-# List with pagination
-python sora_api.py list --limit 10 --after cursor_xyz
-```
-
-#### Retrieve Video Info
-
-```bash
-python sora_api.py retrieve --video-id video_abc123
-```
-
-#### Download a Video
-
-```bash
-# Download video only (auto-generated filename)
-python sora_api.py download --video-id video_abc123
-
-# Download all variants (video, thumbnail, spritesheet)
+# Download a video
 python sora_api.py download --video-id video_abc123 --all
-
-# Download with custom filename
-python sora_api.py download --video-id video_abc123 --output my_video.mp4
-
-# Download specific variant only
-python sora_api.py download --video-id video_abc123 --variant thumbnail
-```
-
-#### Wait for Video Completion
-
-```bash
-python sora_api.py wait --video-id video_abc123
-```
-
-#### Delete a Video
-
-```bash
-# With confirmation prompt
-python sora_api.py delete --video-id video_abc123
-
-# Skip confirmation
-python sora_api.py delete --video-id video_abc123 --yes
-```
-
-### Using a JSON Parameter File
-
-Create a `create_params.json` file (a template is included):
-
-```json
-{
-  "prompt": "Your video prompt here",
-  "model": "sora-2",
-  "seconds": "5",
-  "size": "1920x1080",
-  "wait": true,
-  "no_save": false
-}
-```
-
-Then use it:
-
-```bash
-python sora_api.py create --file create_params.json
 ```
 
 ### Video Info Auto-Save
@@ -179,6 +127,9 @@ python sora_api.py create --prompt "Test" --wait --no-save
 ### Using the Client in Your Own Scripts
 
 ```python
+# Add src/api to your Python path or run from that directory
+import sys
+sys.path.append('src/api')
 from sora_api import SoraAPIClient
 
 # Initialize client
@@ -251,22 +202,36 @@ if client.test_connection():
 
 ```
 c:\dev\Sora\
-├── .git/               # Git repository
-├── .gitignore          # Git ignore file (includes test.txt)
-├── test.txt            # API key storage (NOT in git)
-├── setup_env.bat       # Environment setup script
-├── sora_api.py         # Main API client
-├── requirements.txt    # Python dependencies
-└── README.md           # This file
+├── .git/                   # Git repository
+├── .gitignore              # Git ignore rules
+├── .env                    # Environment variables (NOT in git)
+├── requirements.txt        # Python dependencies
+├── README.md               # This file
+├── CLI_USAGE.md            # CLI documentation
+├── WEB_INTERFACE.md        # Web interface documentation
+├── DEPLOYMENT.md           # Production deployment guide
+├── QUICKSTART.md           # Quick reference guide
+├── src/
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── sora_api.py     # Main API client
+│   └── app/
+│       ├── __init__.py
+│       ├── web_app.py      # Flask web application
+│       └── templates/
+│           └── index.html  # Web interface
+├── videos/                 # Downloaded videos (NOT in git)
+├── temp/                   # Temporary files (NOT in git)
+└── ref/                    # API reference documentation
 ```
 
 ## Security Notes
 
 ⚠️ **Important Security Information**:
 
-- `test.txt` is excluded from git via `.gitignore`
+- `.env` file is excluded from git via `.gitignore`
 - Never commit your API key to version control
-- The `setup_env.bat` file is also excluded from git (it contains key extraction logic)
+- `videos/` and `temp/` directories are excluded from git
 - Always use environment variables for API keys in production
 
 ## API Reference
