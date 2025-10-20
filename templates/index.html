@@ -673,8 +673,12 @@
                 <div class="form-group">
                     <label for="input_reference">Reference Image (Optional)</label>
                     <input type="file" id="input_reference" accept="image/jpeg,image/png,image/webp" />
-                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                    <small id="image-hint" style="color: #6c757d; display: block; margin-top: 5px;">
                         Upload an image to guide the video generation. Image resolution must match the selected output resolution.
+                    </small>
+                    <small id="image-error" style="color: #f87171; display: none; margin-top: 5px; font-weight: 600;">
+                    </small>
+                    <small id="image-success" style="color: #4ade80; display: none; margin-top: 5px; font-weight: 600;">
                     </small>
                 </div>
 
@@ -934,6 +938,105 @@
             }
         }
 
+        // Get expected dimensions for selected video size
+        function getExpectedDimensions() {
+            const size = document.getElementById('size').value;
+            const [width, height] = size.split('x').map(Number);
+            return { width, height };
+        }
+
+        // Update hint text to show expected dimensions
+        function updateImageHint() {
+            const { width, height } = getExpectedDimensions();
+            const hint = document.getElementById('image-hint');
+            hint.innerHTML = `Upload an image to guide video generation. <strong>Required resolution: ${width}x${height} pixels</strong>`;
+        }
+
+        // Validate image dimensions
+        async function validateImageDimensions(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                
+                img.onload = function() {
+                    URL.revokeObjectURL(url);
+                    const { width: expectedWidth, height: expectedHeight } = getExpectedDimensions();
+                    
+                    if (img.width === expectedWidth && img.height === expectedHeight) {
+                        resolve({ valid: true, width: img.width, height: img.height });
+                    } else {
+                        resolve({ 
+                            valid: false, 
+                            width: img.width, 
+                            height: img.height,
+                            expectedWidth,
+                            expectedHeight
+                        });
+                    }
+                };
+                
+                img.onerror = function() {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Failed to load image'));
+                };
+                
+                img.src = url;
+            });
+        }
+
+        // Handle file input change
+        document.getElementById('input_reference').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            const errorMsg = document.getElementById('image-error');
+            const successMsg = document.getElementById('image-success');
+            
+            // Reset messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            if (file) {
+                try {
+                    const result = await validateImageDimensions(file);
+                    
+                    if (result.valid) {
+                        successMsg.textContent = `✓ Image validated: ${result.width}x${result.height} pixels`;
+                        successMsg.style.display = 'block';
+                        logToConsole(`Image validated: ${file.name} (${result.width}x${result.height})`, 'success');
+                    } else {
+                        errorMsg.innerHTML = `✗ Invalid dimensions: Image is ${result.width}x${result.height} but must be ${result.expectedWidth}x${result.expectedHeight}`;
+                        errorMsg.style.display = 'block';
+                        logToConsole(`Image validation failed: ${file.name} is ${result.width}x${result.height}, expected ${result.expectedWidth}x${result.expectedHeight}`, 'error', {
+                            'File': file.name,
+                            'Actual Size': `${result.width}x${result.height}`,
+                            'Expected Size': `${result.expectedWidth}x${result.expectedHeight}`
+                        });
+                        // Clear the file input
+                        e.target.value = '';
+                    }
+                } catch (error) {
+                    errorMsg.textContent = `✗ Error loading image: ${error.message}`;
+                    errorMsg.style.display = 'block';
+                    logToConsole(`Error validating image: ${error.message}`, 'error');
+                    e.target.value = '';
+                }
+            }
+        });
+
+        // Update hint when size changes
+        document.getElementById('size').addEventListener('change', function() {
+            updateImageHint();
+            
+            // Re-validate image if one is selected
+            const fileInput = document.getElementById('input_reference');
+            if (fileInput.files && fileInput.files.length > 0) {
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+            }
+        });
+
+        // Initialize hint on page load
+        updateImageHint();
+
         document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -944,11 +1047,35 @@
             const fileInput = document.getElementById('input_reference');
             const hasFile = fileInput.files && fileInput.files.length > 0;
 
+            // Validate image dimensions before submission
+            if (hasFile) {
+                try {
+                    const result = await validateImageDimensions(fileInput.files[0]);
+                    if (!result.valid) {
+                        const errorMsg = `Image dimensions (${result.width}x${result.height}) don't match video resolution (${result.expectedWidth}x${result.expectedHeight})`;
+                        alert(errorMsg);
+                        logToConsole(errorMsg, 'error');
+                        return; // Stop form submission
+                    }
+                } catch (error) {
+                    alert('Error validating image: ' + error.message);
+                    logToConsole(`Image validation error: ${error.message}`, 'error');
+                    return; // Stop form submission
+                }
+            }
+
             // Log start
             logToConsole(`Starting video generation...`, 'info');
             logToConsole(`Model: ${model}, Prompt: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"`, 'info');
             if (hasFile) {
-                logToConsole(`Reference image attached: ${fileInput.files[0].name}`, 'info');
+                const file = fileInput.files[0];
+                const img = await new Promise(resolve => {
+                    const image = new Image();
+                    image.onload = () => resolve(image);
+                    image.src = URL.createObjectURL(file);
+                });
+                logToConsole(`Reference image: ${file.name} (${img.width}x${img.height})`, 'info');
+                URL.revokeObjectURL(img.src);
             }
 
             // Disable form
@@ -1118,6 +1245,11 @@
             document.getElementById('create-btn').disabled = false;
             document.getElementById('progress-container').classList.remove('active');
             document.getElementById('input_reference').value = ''; // Clear file input
+            
+            // Clear validation messages
+            document.getElementById('image-error').style.display = 'none';
+            document.getElementById('image-success').style.display = 'none';
+            
             currentJobId = null;
             if (statusCheckInterval) {
                 clearInterval(statusCheckInterval);
