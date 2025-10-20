@@ -2259,10 +2259,12 @@
                 thumbnail.style.display = 'none';
                 canvas.style.display = 'block';
                 
-                // Animation loop
+                // Animation configuration
                 let currentFrame = 0;
-                const fps = 30; // 30 frames per second for smooth playback
+                const fps = 10; // Play at 10 FPS for slower, more viewable playback
                 const frameDuration = 1000 / fps;
+                const loopPauseDuration = 1000; // 1 second pause between loops
+                let isLooping = false;
                 
                 const animate = () => {
                     const row = Math.floor(currentFrame / cols);
@@ -2278,11 +2280,21 @@
                         0, 0, frameWidth, frameHeight
                     );
                     
-                    currentFrame = (currentFrame + 1) % totalFrames;
+                    currentFrame++;
                     
-                    // Continue animation
-                    const animationId = setTimeout(animate, frameDuration);
-                    activeAnimations.set(container, animationId);
+                    // Check if we've reached the end
+                    if (currentFrame >= totalFrames) {
+                        currentFrame = 0;
+                        isLooping = true;
+                        // Pause at the end before looping
+                        const animationId = setTimeout(animate, loopPauseDuration);
+                        activeAnimations.set(container, animationId);
+                    } else {
+                        isLooping = false;
+                        // Continue animation at normal speed
+                        const animationId = setTimeout(animate, frameDuration);
+                        activeAnimations.set(container, animationId);
+                    }
                 };
                 
                 animate();
