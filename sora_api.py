@@ -474,8 +474,6 @@ Examples:
     create_parser.add_argument('--model', type=str, default='sora-2', help='Model to use (default: sora-2)')
     create_parser.add_argument('--seconds', type=str, help='Video duration in seconds')
     create_parser.add_argument('--size', type=str, help='Video resolution (e.g., 1920x1080)')
-    create_parser.add_argument('--aspect-ratio', type=str, help='Aspect ratio (e.g., 16:9)')
-    create_parser.add_argument('--loop', type=str, help='Loop setting')
     create_parser.add_argument('--wait', action='store_true', help='Wait for video completion')
     create_parser.add_argument('--no-save', action='store_true', help='Don\'t save video info to JSON')
     
@@ -486,8 +484,6 @@ Examples:
     remix_parser.add_argument('--model', type=str, default='sora-2', help='Model to use (default: sora-2)')
     remix_parser.add_argument('--seconds', type=str, help='Video duration in seconds')
     remix_parser.add_argument('--size', type=str, help='Video resolution (e.g., 1920x1080)')
-    remix_parser.add_argument('--aspect-ratio', type=str, help='Aspect ratio (e.g., 16:9)')
-    remix_parser.add_argument('--loop', type=str, help='Loop setting')
     remix_parser.add_argument('--wait', action='store_true', help='Wait for video completion')
     remix_parser.add_argument('--no-save', action='store_true', help='Don\'t save video info to JSON')
     
@@ -553,10 +549,6 @@ Examples:
                     params['seconds'] = args.seconds
                 if args.size:
                     params['size'] = args.size
-                if args.aspect_ratio:
-                    params['aspect_ratio'] = args.aspect_ratio
-                if args.loop:
-                    params['loop'] = args.loop
                 
                 wait = args.wait
                 no_save = args.no_save
@@ -587,10 +579,6 @@ Examples:
                 params['seconds'] = args.seconds
             if args.size:
                 params['size'] = args.size
-            if args.aspect_ratio:
-                params['aspect_ratio'] = args.aspect_ratio
-            if args.loop:
-                params['loop'] = args.loop
             
             creation_args = params.copy()
             params['wait_for_completion'] = args.wait

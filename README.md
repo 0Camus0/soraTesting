@@ -124,8 +124,6 @@ Create a `create_params.json` file (a template is included):
   "model": "sora-2",
   "seconds": "5",
   "size": "1920x1080",
-  "aspect_ratio": "16:9",
-  "loop": false,
   "wait": true,
   "no_save": false
 }

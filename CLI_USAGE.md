@@ -28,7 +28,6 @@ python sora_api.py create \
   --model "sora-2" \
   --seconds "10" \
   --size "1920x1080" \
-  --aspect-ratio "16:9" \
   --wait
 ```
 
@@ -44,8 +43,6 @@ The `create_params.json` template includes:
   "model": "sora-2",
   "seconds": "5",
   "size": "1920x1080",
-  "aspect_ratio": "16:9",
-  "loop": false,
   "wait": true,
   "no_save": false
 }
@@ -57,8 +54,6 @@ The `create_params.json` template includes:
 - `--model MODEL` - Model to use (default: sora-2)
 - `--seconds SECONDS` - Video duration in seconds
 - `--size SIZE` - Video resolution (e.g., 1920x1080)
-- `--aspect-ratio ASPECT_RATIO` - Aspect ratio (e.g., 16:9)
-- `--loop LOOP` - Loop setting
 - `--wait` - Wait for video completion with progress bar
 - `--no-save` - Don't save video info to JSON when complete
 
@@ -77,8 +72,6 @@ python sora_api.py remix \
 - `--model MODEL` - Model to use (default: sora-2)
 - `--seconds SECONDS` - Video duration in seconds
 - `--size SIZE` - Video resolution
-- `--aspect-ratio ASPECT_RATIO` - Aspect ratio
-- `--loop LOOP` - Loop setting
 - `--wait` - Wait for completion
 - `--no-save` - Don't save video info
 
