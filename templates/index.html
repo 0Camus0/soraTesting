@@ -375,6 +375,181 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Console Panel */
+        .console-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e1e1e;
+            border-top: 2px solid #667eea;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            transition: transform 0.3s ease;
+        }
+
+        .console-panel.collapsed {
+            transform: translateY(calc(100% - 40px));
+        }
+
+        .console-header {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid #3e3e3e;
+        }
+
+        .console-header:hover {
+            background: #353535;
+        }
+
+        .console-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e0e0e0;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .console-icon {
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+            color: #667eea;
+        }
+
+        .console-panel:not(.collapsed) .console-icon {
+            transform: rotate(90deg);
+        }
+
+        .console-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+
+        .console-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .console-btn {
+            background: transparent;
+            border: 1px solid #4a4a4a;
+            color: #b0b0b0;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .console-btn:hover {
+            background: #3e3e3e;
+            color: #e0e0e0;
+            border-color: #667eea;
+        }
+
+        .console-body {
+            height: 250px;
+            overflow-y: auto;
+            background: #1e1e1e;
+        }
+
+        .console-messages {
+            padding: 10px 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        .console-message {
+            padding: 4px 0;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .console-message:last-child {
+            border-bottom: none;
+        }
+
+        .console-timestamp {
+            color: #888;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+
+        .console-text {
+            color: #d4d4d4;
+            flex: 1;
+            word-wrap: break-word;
+        }
+
+        /* Message type colors */
+        .console-message.success .console-text {
+            color: #4ade80;
+        }
+
+        .console-message.success .console-timestamp::before {
+            content: '✓ ';
+            color: #4ade80;
+        }
+
+        .console-message.error .console-text {
+            color: #f87171;
+        }
+
+        .console-message.error .console-timestamp::before {
+            content: '✗ ';
+            color: #f87171;
+        }
+
+        .console-message.warning .console-text {
+            color: #fbbf24;
+        }
+
+        .console-message.warning .console-timestamp::before {
+            content: '⚠ ';
+            color: #fbbf24;
+        }
+
+        .console-message.info .console-text {
+            color: #60a5fa;
+        }
+
+        .console-message.info .console-timestamp::before {
+            content: 'ℹ ';
+            color: #60a5fa;
+        }
+
+        /* Scrollbar styling for console */
+        .console-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .console-body::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        .console-body::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+
+        .console-body::-webkit-scrollbar-thumb:hover {
+            background: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -461,9 +636,82 @@
         </div>
     </div>
 
+    <!-- Console Panel -->
+    <div class="console-panel" id="console-panel">
+        <div class="console-header" onclick="toggleConsole()">
+            <div class="console-title">
+                <span class="console-icon">▸</span>
+                <span>Console</span>
+                <span class="console-badge" id="console-badge">0</span>
+            </div>
+            <div class="console-actions">
+                <button class="console-btn" onclick="clearConsole(); event.stopPropagation();" title="Clear console">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="console-body" id="console-body">
+            <div class="console-messages" id="console-messages">
+                <div class="console-message info">
+                    <span class="console-timestamp">[00:00:00]</span>
+                    <span class="console-text">Console initialized. Ready to track operations...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentJobId = null;
         let statusCheckInterval = null;
+        let consoleMessageCount = 0;
+
+        // Console functions
+        function toggleConsole() {
+            const panel = document.getElementById('console-panel');
+            panel.classList.toggle('collapsed');
+        }
+
+        function logToConsole(message, type = 'info') {
+            const messagesContainer = document.getElementById('console-messages');
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `console-message ${type}`;
+            messageDiv.innerHTML = `
+                <span class="console-timestamp">[${timestamp}]</span>
+                <span class="console-text">${message}</span>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            consoleMessageCount++;
+            
+            // Update badge
+            document.getElementById('console-badge').textContent = consoleMessageCount;
+            
+            // Auto-scroll to bottom
+            const consoleBody = document.getElementById('console-body');
+            consoleBody.scrollTop = consoleBody.scrollHeight;
+            
+            // Auto-expand console on errors
+            if (type === 'error' || type === 'warning') {
+                document.getElementById('console-panel').classList.remove('collapsed');
+            }
+        }
+
+        function clearConsole() {
+            const messagesContainer = document.getElementById('console-messages');
+            messagesContainer.innerHTML = '';
+            consoleMessageCount = 0;
+            document.getElementById('console-badge').textContent = '0';
+            logToConsole('Console cleared.', 'info');
+        }
+
+        // Initialize console as collapsed
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('console-panel').classList.add('collapsed');
+        });
 
         function switchTab(tabName) {
             // Update tab buttons
@@ -487,9 +735,19 @@
         document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const prompt = document.getElementById('prompt').value;
+            const model = document.getElementById('model').value;
+            
             // Check if file is uploaded
             const fileInput = document.getElementById('input_reference');
             const hasFile = fileInput.files && fileInput.files.length > 0;
+
+            // Log start
+            logToConsole(`Starting video generation...`, 'info');
+            logToConsole(`Model: ${model}, Prompt: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"`, 'info');
+            if (hasFile) {
+                logToConsole(`Reference image attached: ${fileInput.files[0].name}`, 'info');
+            }
 
             // Disable form
             document.getElementById('create-btn').disabled = true;
@@ -537,12 +795,16 @@
 
                 if (result.success) {
                     currentJobId = result.job_id;
+                    logToConsole(`Job created successfully. Job ID: ${result.job_id}`, 'success');
+                    logToConsole('Waiting for video generation to complete...', 'info');
                     checkStatus();
                 } else {
+                    logToConsole(`Failed to create job: ${result.error}`, 'error');
                     alert('Error: ' + result.error);
                     resetForm();
                 }
             } catch (error) {
+                logToConsole(`Request failed: ${error.message}`, 'error');
                 alert('Error: ' + error.message);
                 resetForm();
             }
@@ -551,6 +813,9 @@
         function checkStatus() {
             if (!currentJobId) return;
 
+            let lastStatus = '';
+            let lastProgress = -1;
+
             statusCheckInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`/api/status/${currentJobId}`);
@@ -558,9 +823,22 @@
 
                     document.getElementById('status-message').textContent = status.message || 'Processing...';
 
+                    // Log status changes
+                    if (status.message && status.message !== lastStatus) {
+                        const logType = status.status === 'creating' || status.status === 'downloading' ? 'info' : 'info';
+                        logToConsole(status.message, logType);
+                        lastStatus = status.message;
+                    }
+
                     if (status.progress !== undefined) {
                         document.getElementById('progress-fill').style.width = status.progress + '%';
                         document.getElementById('progress-fill').textContent = status.progress + '%';
+                        
+                        // Log progress milestones (every 25%)
+                        if (Math.floor(status.progress / 25) > Math.floor(lastProgress / 25)) {
+                            logToConsole(`Progress: ${status.progress}%`, 'info');
+                        }
+                        lastProgress = status.progress;
                     }
 
                     if (status.status === 'completed') {
@@ -568,6 +846,9 @@
                         document.getElementById('status-message').textContent = '✅ Video generated successfully!';
                         document.getElementById('progress-fill').style.width = '100%';
                         document.getElementById('progress-fill').textContent = '100%';
+                        
+                        logToConsole(`Video generation completed! Video ID: ${status.video_id}`, 'success');
+                        logToConsole('All variants downloaded successfully.', 'success');
                         
                         setTimeout(() => {
                             resetForm();
@@ -577,9 +858,13 @@
                     } else if (status.status === 'failed' || status.status === 'error') {
                         clearInterval(statusCheckInterval);
                         document.getElementById('status-message').textContent = '❌ ' + status.message;
+                        
+                        logToConsole(`Video generation failed: ${status.message}`, 'error');
+                        
                         setTimeout(() => resetForm(), 3000);
                     }
                 } catch (error) {
+                    logToConsole(`Status check error: ${error.message}`, 'error');
                     console.error('Status check error:', error);
                 }
             }, 2000);
@@ -598,6 +883,7 @@
 
         async function loadGallery() {
             try {
+                logToConsole('Loading gallery...', 'info');
                 const response = await fetch('/api/gallery');
                 const result = await response.json();
 
@@ -639,7 +925,9 @@
                         </div>
                     `;
                 }
+                logToConsole(`Gallery loaded: ${result.videos?.length || 0} video(s) found.`, 'success');
             } catch (error) {
+                logToConsole(`Failed to load gallery: ${error.message}`, 'error');
                 console.error('Gallery load error:', error);
             }
         }
@@ -665,6 +953,7 @@
             if (!confirm('Are you sure you want to delete this video?')) return;
 
             try {
+                logToConsole(`Deleting video: ${videoId}...`, 'warning');
                 const response = await fetch(`/api/delete/${videoId}`, {
                     method: 'DELETE'
                 });
@@ -672,13 +961,20 @@
                 const result = await response.json();
 
                 if (result.success) {
+                    logToConsole(`Video deleted successfully: ${videoId}`, 'success');
                     loadGallery();
                 } else {
+                    logToConsole(`Failed to delete video: ${result.error}`, 'error');
                     alert('Error deleting video: ' + result.error);
                 }
             } catch (error) {
+                logToConsole(`Delete request failed: ${error.message}`, 'error');
                 alert('Error: ' + error.message);
             }
+        }
+
+        function downloadVideo(videoPath, videoId) {
+            logToConsole(`Downloading video: ${videoId}`, 'info');
         }
 
         // Close modal when clicking outside
