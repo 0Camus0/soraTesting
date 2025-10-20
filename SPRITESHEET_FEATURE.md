@@ -67,13 +67,20 @@ videos.append({
 2. **On Hover**: 
    - Loads spritesheet from cache or fetches it
    - Hides thumbnail, shows canvas
-   - Starts animation loop at 30 FPS
+   - Starts animation loop at 10 FPS (slower, easier to watch)
    - Extracts frames from 10×10 grid
    - Draws each frame sequentially
+   - Pauses 1 second at end of loop before restarting
 
 3. **On Mouse Leave**:
    - Stops animation loop
    - Hides canvas, shows static thumbnail
+
+**Animation Timing**:
+- **Playback Speed**: 10 FPS (frames per second)
+- **Total Duration**: 100 frames ÷ 10 FPS = 10 seconds per loop
+- **Loop Pause**: 1 second pause at end before restarting
+- **Full Cycle**: 11 seconds (10s playback + 1s pause)
 
 **CSS Styling**:
 ```css
