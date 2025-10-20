@@ -22,14 +22,18 @@ class SoraAPIClient:
         
         Args:
             api_key (str, optional): OpenAI API key. If not provided, 
-                                    reads from OPENAI_API_KEY environment variable.
+                                    reads from OPENAI_API_KEY environment variable or .env file.
         """
+        # Try to load from .env file if environment variable is not set
+        if not api_key and not os.getenv('OPENAI_API_KEY'):
+            self._load_env_file()
+        
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         
         if not self.api_key:
             raise ValueError(
-                "API key not found. Please set OPENAI_API_KEY environment variable "
-                "or pass api_key parameter."
+                "API key not found. Please run 'python setup_env.py' first, "
+                "or set OPENAI_API_KEY environment variable, or pass api_key parameter."
             )
         
         self.base_url = "https://api.openai.com/v1"
@@ -37,6 +41,20 @@ class SoraAPIClient:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
+    
+    def _load_env_file(self):
+        """Load environment variables from .env file if it exists"""
+        env_file = '.env'
+        if os.path.exists(env_file):
+            try:
+                with open(env_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            os.environ[key.strip()] = value.strip()
+            except Exception as e:
+                pass  # Silently fail if .env can't be read
     
     def create(self, prompt, model="sora-2", input_reference=None, seconds=None, size=None, wait_for_completion=False):
         """

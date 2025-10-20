@@ -36,16 +36,20 @@ pip install -r requirements.txt
 
 To set up your environment with the API key:
 
-1. Make sure `test.txt` contains your OpenAI API key
-2. Run the setup batch file:
+1. Make sure `test.txt` contains your OpenAI API key (with Bearer token format)
+2. Run the setup Python script:
 ```bash
-setup_env.bat
+python setup_env.py
 ```
 
 This will:
 - Extract the API key from `test.txt`
-- Set it as the `OPENAI_API_KEY` environment variable
-- Open a PowerShell session with the variable configured
+- Create a `.env` file with your API key (automatically ignored by git)
+- The API client will automatically load from `.env` file when you run commands
+
+**Alternative methods:**
+- Set environment variable manually: `$env:OPENAI_API_KEY="your-key-here"` (PowerShell)
+- Or use the batch file: `setup_env.bat` (Windows - opens new PowerShell with env var set)
 
 ## Usage
 
