@@ -43,9 +43,8 @@ OPENAI_API_KEY=sk-proj-your-actual-api-key-here
 
 The `.env` file is automatically ignored by git and will be loaded by the API client.
 
-**Alternative methods:**
+**Alternative method:**
 - Set environment variable manually: `$env:OPENAI_API_KEY="your-key-here"` (PowerShell)
-- Or use the batch file: `setup_env.bat` (Windows - extracts key from test.txt and opens new PowerShell)
 
 ## Usage
 
