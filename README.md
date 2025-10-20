@@ -12,6 +12,24 @@ A Python client for interacting with the OpenAI Sora 2 video generation API.
 - ✅ Connection testing
 - 🛠️ Modular and extensible design
 
+## Screenshots
+
+### Create Videos
+![Create Video Interface](resources/Create.png)
+Generate videos from text prompts with optional reference images and customizable parameters.
+
+### Gallery View
+![Gallery View](resources/Gallery.png)
+Browse your generated videos with thumbnails and animated hover previews.
+
+### Video Remix
+![Remix Interface](resources/Remix.png)
+Transform existing videos with new creative prompts.
+
+### Video Management
+![Video List](resources/VideList.png)
+Manage your video library with download and delete options.
+
 ## Quick Start
 
 ### Web Interface (Recommended)
@@ -211,6 +229,11 @@ c:\dev\Sora\
 ├── WEB_INTERFACE.md        # Web interface documentation
 ├── DEPLOYMENT.md           # Production deployment guide
 ├── QUICKSTART.md           # Quick reference guide
+├── resources/              # Screenshots and media
+│   ├── Create.png
+│   ├── Gallery.png
+│   ├── Remix.png
+│   └── VideList.png
 ├── src/
 │   ├── api/
 │   │   ├── __init__.py
