@@ -1794,24 +1794,69 @@
         async function loadGallery() {
             try {
                 logToConsole('Loading gallery...', 'info');
-                const response = await fetch('/api/gallery');
-                const result = await response.json();
-
+                
+                // Fetch both local files and server metadata in parallel
+                const [localResponse, serverResponse] = await Promise.all([
+                    fetch('/api/gallery'),
+                    fetch('/api/videos')
+                ]);
+                
+                const localResult = await localResponse.json();
+                const serverResult = await serverResponse.json();
+                
                 const gallery = document.getElementById('gallery');
-
-                if (result.success && result.videos.length > 0) {
-                    gallery.innerHTML = result.videos.map(video => {
-                        const prompt = video.metadata?.creation_args?.prompt || 
+                
+                // Create map of server videos by ID for easy lookup
+                const serverVideoMap = {};
+                if (serverResult.success && serverResult.videos) {
+                    serverResult.videos.forEach(video => {
+                        serverVideoMap[video.id] = video;
+                    });
+                }
+                
+                logToConsole('Fetched server metadata', 'info', {
+                    'Server Videos': Object.keys(serverVideoMap).length,
+                    'Local Videos': localResult.videos?.length || 0
+                });
+                
+                if (localResult.success && localResult.videos.length > 0) {
+                    gallery.innerHTML = localResult.videos.map(video => {
+                        // Get server metadata for this video
+                        const serverMeta = serverVideoMap[video.id] || {};
+                        
+                        // Prefer server metadata over local metadata
+                        const prompt = serverMeta.prompt || 
+                                      video.metadata?.creation_args?.prompt || 
                                       video.metadata?.api_response?.prompt || 
                                       'No prompt available';
-                        const model = video.metadata?.api_response?.model || 
+                        const model = serverMeta.model || 
+                                     video.metadata?.api_response?.model || 
                                      video.metadata?.creation_args?.model || 
                                      'sora-2';
-                        const seconds = video.metadata?.api_response?.seconds || 
+                        const seconds = serverMeta.seconds || 
+                                       video.metadata?.api_response?.seconds || 
                                        video.metadata?.creation_args?.seconds || 
-                                       '8';
+                                       null;
+                        const status = serverMeta.status || 
+                                      video.metadata?.status || 
+                                      'unknown';
+                        const resolution = serverMeta.resolution;
+                        const size = serverMeta.size;
+                        const created_at = serverMeta.created_at;
+                        
                         const thumbnailPath = video.thumbnail_path || 
                                             'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 300 200%27%3E%3Crect fill=%27%23e9ecef%27 width=%27300%27 height=%27200%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%236c757d%27%3ENo Thumbnail%3C/text%3E%3C/svg%3E';
+                        
+                        // Build metadata display
+                        let metaHTML = `<span class="status-badge status-${status}">${status}</span>`;
+                        metaHTML += `<span>Model: ${model}</span>`;
+                        if (seconds) metaHTML += `<span>${seconds}s</span>`;
+                        if (resolution) metaHTML += `<span>${resolution.width}×${resolution.height}</span>`;
+                        if (size) metaHTML += `<span>${size}</span>`;
+                        if (created_at) {
+                            const date = new Date(created_at * 1000).toLocaleString();
+                            metaHTML += `<span>${date}</span>`;
+                        }
                         
                         return `
                             <div class="video-card">
@@ -1823,8 +1868,7 @@
                                 <div class="video-info">
                                     <div class="video-prompt">${prompt}</div>
                                     <div class="video-meta">
-                                        <span>${model}</span>
-                                        <span>${seconds}s</span>
+                                        ${metaHTML}
                                     </div>
                                     <div class="video-actions">
                                         <button class="btn btn-small btn-secondary" onclick="downloadVideo('${video.video_path}', '${video.id}')">
@@ -1849,9 +1893,10 @@
                         </div>
                     `;
                 }
-                logToConsole(`Gallery loaded: ${result.videos?.length || 0} video(s) found.`, 'success', {
-                    'Video Count': result.videos?.length || 0,
-                    'Videos': result.videos
+                logToConsole(`Gallery loaded: ${localResult.videos?.length || 0} video(s) found.`, 'success', {
+                    'Video Count': localResult.videos?.length || 0,
+                    'Server Metadata Count': Object.keys(serverVideoMap).length,
+                    'Videos': localResult.videos
                 });
             } catch (error) {
                 logToConsole(`Failed to load gallery: ${error.message}`, 'error', {
