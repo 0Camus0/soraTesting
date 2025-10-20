@@ -8,8 +8,31 @@ A Python client for interacting with the OpenAI Sora 2 video generation API.
 - 🎬 Easy video generation with text prompts
 - 📊 Real-time progress tracking with polling
 - ⏳ Automatic wait-for-completion support
+- 🌐 **Web Interface** - Modern GUI for creating and managing videos
 - ✅ Connection testing
 - 🛠️ Modular and extensible design
+
+## Quick Start
+
+### Web Interface (Recommended)
+
+For a visual, user-friendly experience:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the web server
+python web_app.py
+```
+
+Then open **http://localhost:5000** in your browser.
+
+📖 See [WEB_INTERFACE.md](WEB_INTERFACE.md) for full documentation.
+
+### Command-Line Interface
+
+For automation and scripting, use the CLI (see below).
 
 ## Setup
 
