@@ -402,8 +402,8 @@ All methods use `sora-2` as the default model.
 ## Troubleshooting
 
 ### "API key not found" error
-- Make sure you've run `setup_env.bat` before running Python scripts
-- Verify that `test.txt` exists and contains your API key
+- Make sure your `.env` file exists in the project root
+- Verify that `OPENAI_API_KEY` is set correctly in `.env`
 
 ### "API connection failed" error
 - Check that your API key is valid
@@ -412,4 +412,8 @@ All methods use `sora-2` as the default model.
 
 ## License
 
-This is a personal project. Use at your own discretion.
+Licensed under the Apache License, Version 2.0 with Commons Clause.
+
+You may use, modify, and distribute this software for personal and non-commercial purposes. The Commons Clause restricts selling the software or offering it as a paid service.
+
+See the [LICENSE](LICENSE) file for full details.
