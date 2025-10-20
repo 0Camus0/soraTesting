@@ -495,6 +495,34 @@ class SoraAPIClient:
         print(f"Video saved to: {filename}")
         return filename
     
+    def download(self, video_id, output_dir="."):
+        """
+        Download video to a specific directory
+        
+        Args:
+            video_id (str): The identifier of the video to download
+            output_dir (str): Directory to save the video (default: current directory)
+        
+        Returns:
+            str: The path to the downloaded video file
+        """
+        os.makedirs(output_dir, exist_ok=True)
+        video_file = os.path.join(output_dir, f"{video_id}.mp4")
+        return self.save_video(video_id, video_file, variant='video')
+    
+    def generate_thumbnail(self, video_id, thumbnail_file):
+        """
+        Download thumbnail from the API
+        
+        Args:
+            video_id (str): The identifier of the video
+            thumbnail_file (str): Path where thumbnail should be saved
+        
+        Returns:
+            str: The path to the saved thumbnail
+        """
+        return self.save_video(video_id, thumbnail_file, variant='thumbnail')
+    
     def test_connection(self):
         """
         Test the API connection with a simple request
