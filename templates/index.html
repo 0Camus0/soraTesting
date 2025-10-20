@@ -474,14 +474,36 @@
         }
 
         .console-message {
-            padding: 4px 0;
-            display: flex;
-            gap: 10px;
+            padding: 8px 4px;
             border-bottom: 1px solid #2a2a2a;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .console-message:hover {
+            background: #252525;
         }
 
         .console-message:last-child {
             border-bottom: none;
+        }
+
+        .console-message-header {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .console-expand-icon {
+            color: #888;
+            flex-shrink: 0;
+            font-size: 0.7em;
+            transition: transform 0.2s;
+            margin-top: 4px;
+        }
+
+        .console-message.expanded .console-expand-icon {
+            transform: rotate(90deg);
         }
 
         .console-timestamp {
@@ -494,6 +516,46 @@
             color: #d4d4d4;
             flex: 1;
             word-wrap: break-word;
+        }
+
+        .console-details {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border-left: 3px solid #667eea;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .console-message.expanded .console-details {
+            display: block;
+        }
+
+        .console-detail-row {
+            margin: 4px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .console-detail-label {
+            color: #888;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .console-detail-value {
+            color: #d4d4d4;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .console-detail-value.json {
+            background: #1e1e1e;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            white-space: pre-wrap;
         }
 
         /* Message type colors */
@@ -673,16 +735,77 @@
             panel.classList.toggle('collapsed');
         }
 
-        function logToConsole(message, type = 'info') {
+        function logToConsole(message, type = 'info', details = null) {
             const messagesContainer = document.getElementById('console-messages');
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const fullTimestamp = new Date().toISOString();
             
             const messageDiv = document.createElement('div');
             messageDiv.className = `console-message ${type}`;
+            
+            // Create message header
+            let detailsHtml = '';
+            if (details) {
+                detailsHtml = '<div class="console-details">';
+                
+                // Add type
+                detailsHtml += `
+                    <div class="console-detail-row">
+                        <span class="console-detail-label">Type:</span>
+                        <span class="console-detail-value">${type.toUpperCase()}</span>
+                    </div>
+                `;
+                
+                // Add full timestamp
+                detailsHtml += `
+                    <div class="console-detail-row">
+                        <span class="console-detail-label">Timestamp:</span>
+                        <span class="console-detail-value">${fullTimestamp}</span>
+                    </div>
+                `;
+                
+                // Add custom details
+                if (typeof details === 'object') {
+                    for (const [key, value] of Object.entries(details)) {
+                        const displayValue = typeof value === 'object' 
+                            ? JSON.stringify(value, null, 2) 
+                            : value;
+                        const valueClass = typeof value === 'object' ? 'json' : '';
+                        detailsHtml += `
+                            <div class="console-detail-row">
+                                <span class="console-detail-label">${key}:</span>
+                                <span class="console-detail-value ${valueClass}">${displayValue}</span>
+                            </div>
+                        `;
+                    }
+                } else {
+                    detailsHtml += `
+                        <div class="console-detail-row">
+                            <span class="console-detail-label">Details:</span>
+                            <span class="console-detail-value">${details}</span>
+                        </div>
+                    `;
+                }
+                
+                detailsHtml += '</div>';
+            }
+            
             messageDiv.innerHTML = `
-                <span class="console-timestamp">[${timestamp}]</span>
-                <span class="console-text">${message}</span>
+                <div class="console-message-header">
+                    ${details ? '<span class="console-expand-icon">▸</span>' : '<span class="console-expand-icon" style="opacity:0">▸</span>'}
+                    <span class="console-timestamp">[${timestamp}]</span>
+                    <span class="console-text">${message}</span>
+                </div>
+                ${detailsHtml}
             `;
+            
+            // Add click handler for expandable messages
+            if (details) {
+                messageDiv.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.classList.toggle('expanded');
+                });
+            }
             
             messagesContainer.appendChild(messageDiv);
             consoleMessageCount++;
@@ -795,16 +918,26 @@
 
                 if (result.success) {
                     currentJobId = result.job_id;
-                    logToConsole(`Job created successfully. Job ID: ${result.job_id}`, 'success');
+                    logToConsole(`Job created successfully. Job ID: ${result.job_id}`, 'success', {
+                        'Job ID': result.job_id,
+                        'Response': result
+                    });
                     logToConsole('Waiting for video generation to complete...', 'info');
                     checkStatus();
                 } else {
-                    logToConsole(`Failed to create job: ${result.error}`, 'error');
+                    logToConsole(`Failed to create job: ${result.error}`, 'error', {
+                        'Error': result.error,
+                        'Response': result
+                    });
                     alert('Error: ' + result.error);
                     resetForm();
                 }
             } catch (error) {
-                logToConsole(`Request failed: ${error.message}`, 'error');
+                logToConsole(`Request failed: ${error.message}`, 'error', {
+                    'Error Type': error.name,
+                    'Message': error.message,
+                    'Stack': error.stack
+                });
                 alert('Error: ' + error.message);
                 resetForm();
             }
@@ -847,7 +980,12 @@
                         document.getElementById('progress-fill').style.width = '100%';
                         document.getElementById('progress-fill').textContent = '100%';
                         
-                        logToConsole(`Video generation completed! Video ID: ${status.video_id}`, 'success');
+                        logToConsole(`Video generation completed! Video ID: ${status.video_id}`, 'success', {
+                            'Video ID': status.video_id,
+                            'Video Path': status.video_path,
+                            'Thumbnail': status.thumbnail_path,
+                            'Status': status
+                        });
                         logToConsole('All variants downloaded successfully.', 'success');
                         
                         setTimeout(() => {
@@ -859,12 +997,20 @@
                         clearInterval(statusCheckInterval);
                         document.getElementById('status-message').textContent = '❌ ' + status.message;
                         
-                        logToConsole(`Video generation failed: ${status.message}`, 'error');
+                        logToConsole(`Video generation failed: ${status.message}`, 'error', {
+                            'Status': status.status,
+                            'Message': status.message,
+                            'Full Response': status
+                        });
                         
                         setTimeout(() => resetForm(), 3000);
                     }
                 } catch (error) {
-                    logToConsole(`Status check error: ${error.message}`, 'error');
+                    logToConsole(`Status check error: ${error.message}`, 'error', {
+                        'Error Type': error.name,
+                        'Message': error.message,
+                        'Stack': error.stack
+                    });
                     console.error('Status check error:', error);
                 }
             }, 2000);
@@ -925,9 +1071,16 @@
                         </div>
                     `;
                 }
-                logToConsole(`Gallery loaded: ${result.videos?.length || 0} video(s) found.`, 'success');
+                logToConsole(`Gallery loaded: ${result.videos?.length || 0} video(s) found.`, 'success', {
+                    'Video Count': result.videos?.length || 0,
+                    'Videos': result.videos
+                });
             } catch (error) {
-                logToConsole(`Failed to load gallery: ${error.message}`, 'error');
+                logToConsole(`Failed to load gallery: ${error.message}`, 'error', {
+                    'Error Type': error.name,
+                    'Message': error.message,
+                    'Stack': error.stack
+                });
                 console.error('Gallery load error:', error);
             }
         }
@@ -961,20 +1114,35 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    logToConsole(`Video deleted successfully: ${videoId}`, 'success');
+                    logToConsole(`Video deleted successfully: ${videoId}`, 'success', {
+                        'Video ID': videoId,
+                        'Response': result
+                    });
                     loadGallery();
                 } else {
-                    logToConsole(`Failed to delete video: ${result.error}`, 'error');
+                    logToConsole(`Failed to delete video: ${result.error}`, 'error', {
+                        'Video ID': videoId,
+                        'Error': result.error,
+                        'Response': result
+                    });
                     alert('Error deleting video: ' + result.error);
                 }
             } catch (error) {
-                logToConsole(`Delete request failed: ${error.message}`, 'error');
+                logToConsole(`Delete request failed: ${error.message}`, 'error', {
+                    'Video ID': videoId,
+                    'Error Type': error.name,
+                    'Message': error.message,
+                    'Stack': error.stack
+                });
                 alert('Error: ' + error.message);
             }
         }
 
         function downloadVideo(videoPath, videoId) {
-            logToConsole(`Downloading video: ${videoId}`, 'info');
+            logToConsole(`Downloading video: ${videoId}`, 'info', {
+                'Video ID': videoId,
+                'File Path': videoPath
+            });
         }
 
         // Close modal when clicking outside
