@@ -32,7 +32,7 @@ class SoraAPIClient:
         
         if not self.api_key:
             raise ValueError(
-                "API key not found. Please run 'python setup_env.py' first, "
+                "API key not found. Please create a .env file with OPENAI_API_KEY, "
                 "or set OPENAI_API_KEY environment variable, or pass api_key parameter."
             )
         

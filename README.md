@@ -32,24 +32,20 @@ pip install -r requirements.txt
 
 ### API Key Configuration
 
-**Important**: Your API key is stored in `test.txt` and should NEVER be committed to the repository.
+**Important**: Your API key should NEVER be committed to the repository.
 
-To set up your environment with the API key:
+To set up your API key, create a `.env` file in the project root:
 
-1. Make sure `test.txt` contains your OpenAI API key (with Bearer token format)
-2. Run the setup Python script:
 ```bash
-python setup_env.py
+# .env file
+OPENAI_API_KEY=sk-proj-your-actual-api-key-here
 ```
 
-This will:
-- Extract the API key from `test.txt`
-- Create a `.env` file with your API key (automatically ignored by git)
-- The API client will automatically load from `.env` file when you run commands
+The `.env` file is automatically ignored by git and will be loaded by the API client.
 
 **Alternative methods:**
 - Set environment variable manually: `$env:OPENAI_API_KEY="your-key-here"` (PowerShell)
-- Or use the batch file: `setup_env.bat` (Windows - opens new PowerShell with env var set)
+- Or use the batch file: `setup_env.bat` (Windows - extracts key from test.txt and opens new PowerShell)
 
 ## Usage
 
