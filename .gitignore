@@ -1,6 +1,9 @@
 # API Key file - DO NOT COMMIT
 test.txt
 
+# Reference documentation
+ref/
+
 # Python
 __pycache__/
 *.py[cod]
