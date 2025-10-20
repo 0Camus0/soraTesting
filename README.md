@@ -6,6 +6,8 @@ A Python client for interacting with the OpenAI Sora 2 video generation API.
 
 - 🔐 Secure API key management using environment variables
 - 🎬 Easy video generation with text prompts
+- 📊 Real-time progress tracking with polling
+- ⏳ Automatic wait-for-completion support
 - ✅ Connection testing
 - 🛠️ Modular and extensible design
 
@@ -83,19 +85,43 @@ client = SoraAPIClient()
 
 # Test connection
 if client.test_connection():
-    # Create a video
-    video_job = client.create(
-        prompt="Your video prompt here",
-        seconds="5",          # Optional: video duration in seconds
-        size="1920x1080"      # Optional: video resolution (widthxheight)
+    # Option 1: Create a video and wait for completion automatically
+    completed_video = client.create(
+        prompt="A majestic eagle soaring through the clouds",
+        seconds="5",
+        size="1920x1080",
+        wait_for_completion=True  # Polls until complete and shows progress
     )
     
-    # Get the video ID from the response
+    print(f"Video completed! ID: {completed_video['id']}")
+    
+    # Option 2: Create video and manually wait later
+    video_job = client.create(
+        prompt="Your video prompt here",
+        seconds="5",
+        size="1920x1080"
+    )
+    
     video_id = video_job['id']
     
-    # Check video status
+    # Manually wait for completion with progress tracking
+    try:
+        completed = client.wait_for_completion(
+            video_id,
+            poll_interval=3,      # Check every 3 seconds
+            max_wait_time=600,    # Timeout after 10 minutes
+            show_progress=True    # Display progress bar
+        )
+        print("Video generation complete!")
+    except TimeoutError:
+        print("Video took too long to generate")
+    except Exception as e:
+        print(f"Error: {e}")
+    
+    # Option 3: Check status manually without waiting
     video_info = client.retrieve(video_id)
     print(f"Video status: {video_info['status']}")
+    print(f"Progress: {video_info.get('progress', 0)}%")
     
     # Once completed, download the video
     if video_info['status'] == 'completed':

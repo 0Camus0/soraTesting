@@ -8,6 +8,7 @@ import os
 import sys
 import requests
 import json
+import time
 
 
 class SoraAPIClient:
@@ -35,7 +36,7 @@ class SoraAPIClient:
             "Authorization": f"Bearer {self.api_key}"
         }
     
-    def create(self, prompt, model="sora-2", input_reference=None, seconds=None, size=None):
+    def create(self, prompt, model="sora-2", input_reference=None, seconds=None, size=None, wait_for_completion=False):
         """
         Create a video using the Sora 2 API
         
@@ -45,6 +46,7 @@ class SoraAPIClient:
             input_reference (file, optional): Optional image reference that guides generation
             seconds (str, optional): Clip duration in seconds. Defaults to 4 seconds
             size (str, optional): Output resolution formatted as width x height. Defaults to 720x1280
+            wait_for_completion (bool): If True, poll until video is complete. Defaults to False
         
         Returns:
             dict: The newly created video job
@@ -70,6 +72,13 @@ class SoraAPIClient:
             
             result = response.json()
             print("Video creation job submitted successfully!")
+            
+            # Wait for completion if requested
+            if wait_for_completion:
+                video_id = result.get('id')
+                if video_id:
+                    result = self.wait_for_completion(video_id)
+            
             return result
             
         except requests.exceptions.HTTPError as e:
@@ -80,13 +89,14 @@ class SoraAPIClient:
             print(f"Request Error: {e}")
             raise
     
-    def remix(self, video_id, prompt):
+    def remix(self, video_id, prompt, wait_for_completion=False):
         """
         Create a video remix based on an existing video
         
         Args:
             video_id (str): The identifier of the completed video to remix
             prompt (str): Updated text prompt that directs the remix generation
+            wait_for_completion (bool): If True, poll until video is complete. Defaults to False
         
         Returns:
             dict: The newly created remix video job
@@ -104,6 +114,13 @@ class SoraAPIClient:
             
             result = response.json()
             print("Video remix job submitted successfully!")
+            
+            # Wait for completion if requested
+            if wait_for_completion:
+                remix_video_id = result.get('id')
+                if remix_video_id:
+                    result = self.wait_for_completion(remix_video_id)
+            
             return result
             
         except requests.exceptions.HTTPError as e:
@@ -166,12 +183,10 @@ class SoraAPIClient:
         url = f"{self.base_url}/videos/{video_id}"
         
         try:
-            print(f"Retrieving video '{video_id}'...")
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             
             result = response.json()
-            print("Video retrieved successfully!")
             return result
             
         except requests.exceptions.HTTPError as e:
@@ -181,6 +196,108 @@ class SoraAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"Request Error: {e}")
             raise
+    
+    def wait_for_completion(self, video_id, poll_interval=3, max_wait_time=600, show_progress=True):
+        """
+        Wait for a video job to complete by polling its status
+        
+        Args:
+            video_id (str): The identifier of the video to monitor
+            poll_interval (int): Seconds to wait between status checks. Defaults to 3
+            max_wait_time (int): Maximum seconds to wait before timeout. Defaults to 600 (10 minutes)
+            show_progress (bool): Display progress updates. Defaults to True
+        
+        Returns:
+            dict: The completed video job
+            
+        Raises:
+            TimeoutError: If video doesn't complete within max_wait_time
+            Exception: If video job fails
+        """
+        if show_progress:
+            print(f"\nWaiting for video '{video_id}' to complete...")
+        
+        start_time = time.time()
+        last_status = None
+        last_progress = None
+        
+        while True:
+            # Check if we've exceeded max wait time
+            elapsed = time.time() - start_time
+            if elapsed > max_wait_time:
+                raise TimeoutError(
+                    f"Video generation timed out after {max_wait_time} seconds. "
+                    f"Video ID: {video_id}"
+                )
+            
+            # Get current video status
+            try:
+                video = self.retrieve(video_id)
+            except Exception as e:
+                print(f"\nError retrieving video status: {e}")
+                time.sleep(poll_interval)
+                continue
+            
+            status = video.get('status', 'unknown')
+            progress = video.get('progress', 0)
+            
+            # Display progress if it changed
+            if show_progress and (status != last_status or progress != last_progress):
+                elapsed_str = f"{int(elapsed)}s"
+                
+                if status == 'queued':
+                    print(f"  [{elapsed_str}] Status: Queued, waiting to start...")
+                elif status == 'in_progress':
+                    progress_bar = self._create_progress_bar(progress)
+                    print(f"  [{elapsed_str}] Progress: {progress_bar} {progress}%")
+                elif status == 'completed':
+                    print(f"  [{elapsed_str}] Status: Completed! ✓")
+                elif status == 'failed':
+                    error_msg = video.get('error', {}).get('message', 'Unknown error')
+                    print(f"  [{elapsed_str}] Status: Failed - {error_msg}")
+                elif status == 'cancelled':
+                    print(f"  [{elapsed_str}] Status: Cancelled")
+                elif status == 'incomplete':
+                    print(f"  [{elapsed_str}] Status: Incomplete")
+                
+                last_status = status
+                last_progress = progress
+            
+            # Check for terminal states
+            if status == 'completed':
+                if show_progress:
+                    print(f"\n✓ Video generation completed successfully!")
+                    print(f"  Total time: {int(elapsed)} seconds")
+                return video
+            
+            elif status == 'failed':
+                error_info = video.get('error', {})
+                error_msg = error_info.get('message', 'Unknown error occurred')
+                raise Exception(f"Video generation failed: {error_msg}")
+            
+            elif status == 'cancelled':
+                raise Exception("Video generation was cancelled")
+            
+            elif status == 'incomplete':
+                raise Exception("Video generation incomplete")
+            
+            # Wait before next poll
+            time.sleep(poll_interval)
+    
+    def _create_progress_bar(self, progress, width=30):
+        """
+        Create a text-based progress bar
+        
+        Args:
+            progress (int): Progress percentage (0-100)
+            width (int): Width of the progress bar in characters
+        
+        Returns:
+            str: Progress bar string
+        """
+        filled = int(width * progress / 100)
+        bar = '█' * filled + '░' * (width - filled)
+        return f"[{bar}]"
     
     def delete(self, video_id):
         """
@@ -317,6 +434,36 @@ def main():
         
         # Save the video ID for later examples
         video_id = result.get('id', 'video_123')
+        
+        # Example 1b: Create a video and wait for completion
+        print("\n\nExample 1b: Creating a video with auto-wait")
+        print("-" * 50)
+        
+        # Uncomment to test waiting for completion:
+        # completed_video = client.create(
+        #     prompt="A majestic eagle soaring through the clouds",
+        #     wait_for_completion=True  # Will poll until complete
+        # )
+        # print("\nCompleted Video:")
+        # print(json.dumps(completed_video, indent=2))
+        
+        # Example 1c: Manually wait for a video to complete
+        print("\n\nExample 1c: Manually waiting for video completion")
+        print("-" * 50)
+        
+        # Uncomment to test manual waiting:
+        # try:
+        #     completed = client.wait_for_completion(
+        #         video_id,
+        #         poll_interval=2,      # Check every 2 seconds
+        #         max_wait_time=300,    # Timeout after 5 minutes
+        #         show_progress=True    # Show progress bar
+        #     )
+        #     print("\nVideo completed!")
+        # except TimeoutError as e:
+        #     print(f"\nTimeout: {e}")
+        # except Exception as e:
+        #     print(f"\nError: {e}")
         
         # Example 2: List videos
         print("\n\nExample 2: Listing videos")
