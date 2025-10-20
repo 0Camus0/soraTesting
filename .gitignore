@@ -4,6 +4,12 @@ test.txt
 # Reference documentation
 ref/
 
+# Generated video info and downloads
+videos/
+*.mp4
+*.mov
+*.avi
+
 # Python
 __pycache__/
 *.py[cod]

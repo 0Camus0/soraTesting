@@ -9,6 +9,8 @@ import sys
 import requests
 import json
 import time
+import argparse
+from datetime import datetime
 
 
 class SoraAPIClient:
@@ -299,6 +301,38 @@ class SoraAPIClient:
         bar = '█' * filled + '░' * (width - filled)
         return f"[{bar}]"
     
+    def save_video_info(self, video_data, creation_args=None, output_dir="videos"):
+        """
+        Save video information to a JSON file
+        
+        Args:
+            video_data (dict): The video data returned by the API
+            creation_args (dict, optional): The arguments used to create the video
+            output_dir (str): Directory to save the JSON file
+        
+        Returns:
+            str: Path to the saved JSON file
+        """
+        # Create output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
+        video_id = video_data.get('id', 'unknown')
+        filename = os.path.join(output_dir, f"{video_id}.json")
+        
+        # Combine API response with creation arguments
+        info = {
+            "saved_at": datetime.now().isoformat(),
+            "creation_args": creation_args or {},
+            "api_response": video_data
+        }
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(info, f, indent=2, ensure_ascii=False)
+        
+        print(f"Video info saved to: {filename}")
+        return filename
+    
     def delete(self, video_id):
         """
         Delete a video
@@ -401,116 +435,269 @@ class SoraAPIClient:
 
 
 def main():
-    """Example usage of the Sora API client"""
+    """Command-line interface for the Sora API client"""
+    
+    parser = argparse.ArgumentParser(
+        description='Sora 2 API Client - Create, manage, and download AI-generated videos',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create a video from a prompt
+  python sora_api.py create --prompt "A sunset over the ocean" --wait
+
+  # Create a video from a JSON file
+  python sora_api.py create --file create_params.json --wait
+
+  # Remix an existing video
+  python sora_api.py remix --video-id video_123 --prompt "Make it sunrise" --wait
+
+  # List all videos
+  python sora_api.py list --limit 20
+
+  # Retrieve video information
+  python sora_api.py retrieve --video-id video_123
+
+  # Download a video
+  python sora_api.py download --video-id video_123 --output my_video.mp4
+
+  # Delete a video
+  python sora_api.py delete --video-id video_123
+        """
+    )
+    
+    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    
+    # CREATE command
+    create_parser = subparsers.add_parser('create', help='Create a new video')
+    create_parser.add_argument('--file', type=str, help='JSON file with creation parameters')
+    create_parser.add_argument('--prompt', type=str, help='Video generation prompt')
+    create_parser.add_argument('--model', type=str, default='sora-2', help='Model to use (default: sora-2)')
+    create_parser.add_argument('--seconds', type=str, help='Video duration in seconds')
+    create_parser.add_argument('--size', type=str, help='Video resolution (e.g., 1920x1080)')
+    create_parser.add_argument('--aspect-ratio', type=str, help='Aspect ratio (e.g., 16:9)')
+    create_parser.add_argument('--loop', type=str, help='Loop setting')
+    create_parser.add_argument('--wait', action='store_true', help='Wait for video completion')
+    create_parser.add_argument('--no-save', action='store_true', help='Don\'t save video info to JSON')
+    
+    # REMIX command
+    remix_parser = subparsers.add_parser('remix', help='Remix an existing video')
+    remix_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to remix')
+    remix_parser.add_argument('--prompt', type=str, required=True, help='Remix prompt')
+    remix_parser.add_argument('--model', type=str, default='sora-2', help='Model to use (default: sora-2)')
+    remix_parser.add_argument('--seconds', type=str, help='Video duration in seconds')
+    remix_parser.add_argument('--size', type=str, help='Video resolution (e.g., 1920x1080)')
+    remix_parser.add_argument('--aspect-ratio', type=str, help='Aspect ratio (e.g., 16:9)')
+    remix_parser.add_argument('--loop', type=str, help='Loop setting')
+    remix_parser.add_argument('--wait', action='store_true', help='Wait for video completion')
+    remix_parser.add_argument('--no-save', action='store_true', help='Don\'t save video info to JSON')
+    
+    # LIST command
+    list_parser = subparsers.add_parser('list', help='List videos')
+    list_parser.add_argument('--limit', type=int, default=20, help='Number of videos to return (default: 20)')
+    list_parser.add_argument('--order', type=str, choices=['asc', 'desc'], default='desc', help='Sort order (default: desc)')
+    list_parser.add_argument('--after', type=str, help='Cursor for pagination (after)')
+    list_parser.add_argument('--before', type=str, help='Cursor for pagination (before)')
+    
+    # RETRIEVE command
+    retrieve_parser = subparsers.add_parser('retrieve', help='Retrieve video information')
+    retrieve_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to retrieve')
+    
+    # DELETE command
+    delete_parser = subparsers.add_parser('delete', help='Delete a video')
+    delete_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to delete')
+    delete_parser.add_argument('--yes', action='store_true', help='Skip confirmation prompt')
+    
+    # DOWNLOAD command
+    download_parser = subparsers.add_parser('download', help='Download video content')
+    download_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to download')
+    download_parser.add_argument('--output', type=str, help='Output filename (default: <video_id>.mp4)')
+    download_parser.add_argument('--variant', type=str, help='Video variant to download')
+    
+    # WAIT command
+    wait_parser = subparsers.add_parser('wait', help='Wait for a video to complete')
+    wait_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to wait for')
+    wait_parser.add_argument('--interval', type=int, default=3, help='Polling interval in seconds (default: 3)')
+    wait_parser.add_argument('--timeout', type=int, default=600, help='Maximum wait time in seconds (default: 600)')
+    wait_parser.add_argument('--no-save', action='store_true', help='Don\'t save video info to JSON when complete')
+    
+    args = parser.parse_args()
+    
+    # Show help if no command provided
+    if not args.command:
+        parser.print_help()
+        return
     
     try:
         # Initialize the client
         client = SoraAPIClient()
         
-        # Test connection
-        print("Testing API connection...")
-        if not client.test_connection():
-            print("Failed to connect to API. Please check your API key.")
-            return
+        # Execute the requested command
+        if args.command == 'create':
+            # Load parameters from file if provided
+            if args.file:
+                with open(args.file, 'r') as f:
+                    params = json.load(f)
+                wait = params.pop('wait', args.wait)
+                no_save = params.pop('no_save', args.no_save)
+            else:
+                # Build parameters from arguments
+                if not args.prompt:
+                    print("Error: --prompt is required when not using --file")
+                    return
+                
+                params = {
+                    'prompt': args.prompt,
+                    'model': args.model
+                }
+                if args.seconds:
+                    params['seconds'] = args.seconds
+                if args.size:
+                    params['size'] = args.size
+                if args.aspect_ratio:
+                    params['aspect_ratio'] = args.aspect_ratio
+                if args.loop:
+                    params['loop'] = args.loop
+                
+                wait = args.wait
+                no_save = args.no_save
+            
+            # Store original params for saving
+            creation_args = params.copy()
+            params['wait_for_completion'] = wait
+            
+            print("Creating video...")
+            result = client.create(**params)
+            
+            print("\nVideo creation initiated!")
+            print(f"Video ID: {result.get('id')}")
+            print(f"Status: {result.get('status')}")
+            
+            if result.get('status') == 'completed' and not no_save:
+                client.save_video_info(result, creation_args)
+            
+            print(json.dumps(result, indent=2))
         
-        print("\n" + "="*50)
-        print("Sora 2 API Client - Examples")
-        print("="*50 + "\n")
+        elif args.command == 'remix':
+            params = {
+                'video_id': args.video_id,
+                'prompt': args.prompt,
+                'model': args.model
+            }
+            if args.seconds:
+                params['seconds'] = args.seconds
+            if args.size:
+                params['size'] = args.size
+            if args.aspect_ratio:
+                params['aspect_ratio'] = args.aspect_ratio
+            if args.loop:
+                params['loop'] = args.loop
+            
+            creation_args = params.copy()
+            params['wait_for_completion'] = args.wait
+            
+            print("Remixing video...")
+            result = client.remix(**params)
+            
+            print("\nVideo remix initiated!")
+            print(f"Video ID: {result.get('id')}")
+            print(f"Status: {result.get('status')}")
+            
+            if result.get('status') == 'completed' and not args.no_save:
+                client.save_video_info(result, creation_args)
+            
+            print(json.dumps(result, indent=2))
         
-        # Example 1: Create a video
-        print("Example 1: Creating a video")
-        print("-" * 50)
-        prompt = "A serene sunset over a calm ocean, with waves gently lapping at the shore"
+        elif args.command == 'list':
+            params = {
+                'limit': args.limit,
+                'order': args.order
+            }
+            if args.after:
+                params['after'] = args.after
+            if args.before:
+                params['before'] = args.before
+            
+            result = client.list(**params)
+            
+            videos = result.get('data', [])
+            print(f"\nFound {len(videos)} video(s):")
+            print("-" * 80)
+            
+            for video in videos:
+                print(f"ID: {video.get('id')}")
+                print(f"  Status: {video.get('status')}")
+                print(f"  Created: {video.get('created_at', 'N/A')}")
+                if video.get('prompt'):
+                    prompt = video['prompt'][:60] + "..." if len(video.get('prompt', '')) > 60 else video.get('prompt')
+                    print(f"  Prompt: {prompt}")
+                print()
+            
+            print(json.dumps(result, indent=2))
         
-        result = client.create(
-            prompt=prompt,
-            model="sora-2",  # Default model
-            seconds="5",     # 5 second clip
-            size="1920x1080" # Full HD resolution
-        )
+        elif args.command == 'retrieve':
+            result = client.retrieve(args.video_id)
+            
+            print(f"\nVideo Information:")
+            print(f"ID: {result.get('id')}")
+            print(f"Status: {result.get('status')}")
+            print(f"Progress: {result.get('progress', 0)}%")
+            print(f"Created: {result.get('created_at', 'N/A')}")
+            
+            print(json.dumps(result, indent=2))
         
-        print("\nCreate Response:")
-        print(json.dumps(result, indent=2))
+        elif args.command == 'delete':
+            if not args.yes:
+                confirm = input(f"Are you sure you want to delete video '{args.video_id}'? (yes/no): ")
+                if confirm.lower() not in ['yes', 'y']:
+                    print("Deletion cancelled.")
+                    return
+            
+            result = client.delete(args.video_id)
+            print(json.dumps(result, indent=2))
         
-        # Save the video ID for later examples
-        video_id = result.get('id', 'video_123')
+        elif args.command == 'download':
+            output = args.output or f"{args.video_id}.mp4"
+            
+            client.save_video(args.video_id, output, args.variant)
+            print(f"\nVideo saved to: {output}")
         
-        # Example 1b: Create a video and wait for completion
-        print("\n\nExample 1b: Creating a video with auto-wait")
-        print("-" * 50)
-        
-        # Uncomment to test waiting for completion:
-        # completed_video = client.create(
-        #     prompt="A majestic eagle soaring through the clouds",
-        #     wait_for_completion=True  # Will poll until complete
-        # )
-        # print("\nCompleted Video:")
-        # print(json.dumps(completed_video, indent=2))
-        
-        # Example 1c: Manually wait for a video to complete
-        print("\n\nExample 1c: Manually waiting for video completion")
-        print("-" * 50)
-        
-        # Uncomment to test manual waiting:
-        # try:
-        #     completed = client.wait_for_completion(
-        #         video_id,
-        #         poll_interval=2,      # Check every 2 seconds
-        #         max_wait_time=300,    # Timeout after 5 minutes
-        #         show_progress=True    # Show progress bar
-        #     )
-        #     print("\nVideo completed!")
-        # except TimeoutError as e:
-        #     print(f"\nTimeout: {e}")
-        # except Exception as e:
-        #     print(f"\nError: {e}")
-        
-        # Example 2: List videos
-        print("\n\nExample 2: Listing videos")
-        print("-" * 50)
-        
-        videos = client.list(limit=10, order="desc")
-        print(f"\nFound {len(videos.get('data', []))} videos")
-        
-        # Example 3: Retrieve a specific video
-        print("\n\nExample 3: Retrieving a video")
-        print("-" * 50)
-        
-        video_info = client.retrieve(video_id)
-        print("\nVideo Info:")
-        print(json.dumps(video_info, indent=2))
-        
-        # Example 4: Remix a video (commented out - requires completed video)
-        # print("\n\nExample 4: Remixing a video")
-        # print("-" * 50)
-        # 
-        # remix_result = client.remix(
-        #     video_id=video_id,
-        #     prompt="The same ocean scene, but now at sunrise with pink and orange hues"
-        # )
-        # print("\nRemix Response:")
-        # print(json.dumps(remix_result, indent=2))
-        
-        # Example 5: Download video content (commented out - requires completed video)
-        # print("\n\nExample 5: Downloading video content")
-        # print("-" * 50)
-        # 
-        # client.save_video(video_id, "my_video.mp4")
-        
-        # Example 6: Delete a video (commented out to prevent accidental deletion)
-        # print("\n\nExample 6: Deleting a video")
-        # print("-" * 50)
-        # 
-        # delete_result = client.delete(video_id)
-        # print("\nDelete Response:")
-        # print(json.dumps(delete_result, indent=2))
-        
+        elif args.command == 'wait':
+            print(f"Waiting for video '{args.video_id}' to complete...")
+            
+            try:
+                result = client.wait_for_completion(
+                    args.video_id,
+                    poll_interval=args.interval,
+                    max_wait_time=args.timeout,
+                    show_progress=True
+                )
+                
+                if not args.no_save:
+                    client.save_video_info(result)
+                
+                print(json.dumps(result, indent=2))
+                
+            except TimeoutError as e:
+                print(f"\nError: {e}")
+                sys.exit(1)
+            except Exception as e:
+                print(f"\nError: {e}")
+                sys.exit(1)
+    
     except ValueError as e:
         print(f"Configuration Error: {e}")
         print("\nPlease run 'setup_env.bat' to set up your API key.")
         sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"File Error: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\nOperation cancelled by user.")
+        sys.exit(0)
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

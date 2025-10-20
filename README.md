@@ -49,30 +49,105 @@ This will:
 
 ## Usage
 
-### Basic Example
+### Command-Line Interface
 
-After running `setup_env.bat`, you can use the Sora API client:
+The client provides a comprehensive CLI for all operations:
 
-```python
-from sora_api import SoraAPIClient
-
-# Initialize the client (automatically reads from environment variable)
-client = SoraAPIClient()
-
-# Generate a video
-result = client.generate_video(
-    prompt="A serene sunset over a calm ocean, with waves gently lapping at the shore"
-)
-
-print(result)
-```
-
-### Running the Example Script
-
-In the PowerShell session opened by `setup_env.bat`, run:
+#### Create a Video
 
 ```bash
-python sora_api.py
+# Create from command-line arguments
+python sora_api.py create --prompt "A sunset over the ocean" --wait
+
+# Create with specific parameters
+python sora_api.py create --prompt "A majestic eagle" --seconds "10" --size "1920x1080" --wait
+
+# Create from a JSON file
+python sora_api.py create --file create_params.json --wait
+```
+
+#### Remix a Video
+
+```bash
+python sora_api.py remix --video-id video_abc123 --prompt "Make it sunrise instead" --wait
+```
+
+#### List Videos
+
+```bash
+# List recent videos
+python sora_api.py list --limit 20
+
+# List with pagination
+python sora_api.py list --limit 10 --after cursor_xyz
+```
+
+#### Retrieve Video Info
+
+```bash
+python sora_api.py retrieve --video-id video_abc123
+```
+
+#### Download a Video
+
+```bash
+# Download with auto-generated filename
+python sora_api.py download --video-id video_abc123
+
+# Download with custom filename
+python sora_api.py download --video-id video_abc123 --output my_video.mp4
+```
+
+#### Wait for Video Completion
+
+```bash
+python sora_api.py wait --video-id video_abc123
+```
+
+#### Delete a Video
+
+```bash
+# With confirmation prompt
+python sora_api.py delete --video-id video_abc123
+
+# Skip confirmation
+python sora_api.py delete --video-id video_abc123 --yes
+```
+
+### Using a JSON Parameter File
+
+Create a `create_params.json` file (a template is included):
+
+```json
+{
+  "prompt": "Your video prompt here",
+  "model": "sora-2",
+  "seconds": "5",
+  "size": "1920x1080",
+  "aspect_ratio": "16:9",
+  "loop": false,
+  "wait": true,
+  "no_save": false
+}
+```
+
+Then use it:
+
+```bash
+python sora_api.py create --file create_params.json
+```
+
+### Video Info Auto-Save
+
+By default, when a video completes (status = "completed"), the script automatically saves:
+- The complete API response
+- All creation parameters used
+- Timestamp of when the info was saved
+
+The file is saved as `videos/<video_id>.json`. To disable this:
+
+```bash
+python sora_api.py create --prompt "Test" --wait --no-save
 ```
 
 ### Using the Client in Your Own Scripts
@@ -94,6 +169,13 @@ if client.test_connection():
     )
     
     print(f"Video completed! ID: {completed_video['id']}")
+    
+    # Save video info to JSON
+    client.save_video_info(completed_video, creation_args={
+        "prompt": "A majestic eagle soaring through the clouds",
+        "seconds": "5",
+        "size": "1920x1080"
+    })
     
     # Option 2: Create video and manually wait later
     video_job = client.create(
