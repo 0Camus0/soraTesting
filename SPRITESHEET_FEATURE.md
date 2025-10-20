@@ -160,26 +160,34 @@ Fix thumbnail paths and add spritesheet hover animation
 
 ### Spritesheet Grid Layout
 ```
+Frame Dimensions: 174×100 pixels per frame
+Grid Layout: 10 columns × 10 rows = 100 frames
+Total Spritesheet Size: 1740×1000 pixels
+
 ┌────┬────┬────┬────┬────┬────┬────┬────┬────┬────┐
-│ 00 │ 01 │ 02 │ 03 │ 04 │ 05 │ 06 │ 07 │ 08 │ 09 │
-├────┼────┼────┼────┼────┼────┼────┼────┼────┼────┤
+│ 00 │ 01 │ 02 │ 03 │ 04 │ 05 │ 06 │ 07 │ 08 │ 09 │  174px wide
+├────┼────┼────┼────┼────┼────┼────┼────┼────┼────┤  each
 │ 10 │ 11 │ 12 │ 13 │ 14 │ 15 │ 16 │ 17 │ 18 │ 19 │
-├────┼────┼────┼────┼────┼────┼────┼────┼────┼────┤
-│ 20 │ 21 │ 22 │ ... continues to frame 99      │
+├────┼────┼────┼────┼────┼────┼────┼────┼────┼────┤  100px tall
+│ 20 │ 21 │ 22 │ ... continues to frame 99      │  each
 └────┴────┴────┴────┴────┴────┴────┴────┴────┴────┘
 ```
 
 ### Frame Extraction Algorithm
 ```javascript
+// Fixed frame dimensions from Sora API
+const frameWidth = 174;   // Each frame is 174 pixels wide
+const frameHeight = 100;  // Each frame is 100 pixels tall
+
 const row = Math.floor(currentFrame / cols);  // Which row (0-9)
 const col = currentFrame % cols;              // Which column (0-9)
 
 ctx.drawImage(
     spritesheet,
-    col * frameWidth, row * frameHeight,  // Source position
-    frameWidth, frameHeight,              // Source size
+    col * frameWidth, row * frameHeight,  // Source position (174px steps)
+    frameWidth, frameHeight,              // Source size (174×100)
     0, 0,                                 // Dest position
-    canvas.width, canvas.height           // Dest size
+    frameWidth, frameHeight               // Dest size (no scaling, 1:1)
 );
 ```
 
