@@ -492,6 +492,7 @@
             display: flex;
             gap: 10px;
             align-items: flex-start;
+            width: 100%;
         }
 
         .console-expand-icon {
@@ -587,6 +588,40 @@
             border-color: #4ade80;
         }
 
+        .console-entry-copy-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #666;
+            padding: 4px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            opacity: 0;
+            flex-shrink: 0;
+        }
+
+        .console-message-header:hover .console-entry-copy-btn {
+            opacity: 1;
+        }
+
+        .console-entry-copy-btn:hover {
+            background: #3e3e3e;
+            color: #4ade80;
+            border-color: #4a4a4a;
+        }
+
+        .console-entry-copy-btn.copied {
+            background: #4ade80;
+            color: #1e1e1e;
+            border-color: #4ade80;
+            opacity: 1;
+        }
+
         .console-detail-value-wrapper {
             display: flex;
             align-items: flex-start;
@@ -648,6 +683,134 @@
         .console-body::-webkit-scrollbar-thumb:hover {
             background: #667eea;
         }
+
+        /* Video List styles */
+        .video-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-list-table th {
+            background: #1a1a1a;
+            color: #fff;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #3a3a3a;
+        }
+
+        .video-list-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #3a3a3a;
+            color: #ddd;
+        }
+
+        .video-list-table tr:hover {
+            background: #333;
+        }
+
+        .video-list-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .status-badge.queued {
+            background: #374151;
+            color: #9ca3af;
+        }
+
+        .status-badge.in_progress {
+            background: #1e3a8a;
+            color: #60a5fa;
+            animation: pulse 2s infinite;
+        }
+
+        .status-badge.completed {
+            background: #065f46;
+            color: #34d399;
+        }
+
+        .status-badge.failed {
+            background: #7f1d1d;
+            color: #f87171;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .action-btn.download {
+            background: #667eea;
+            color: white;
+        }
+
+        .action-btn.download:hover {
+            background: #5568d3;
+        }
+
+        .action-btn.delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .action-btn.delete:hover {
+            background: #dc2626;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .prompt-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .prompt-cell:hover {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .spinner-inline {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #60a5fa;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -660,6 +823,7 @@
         <div class="tabs">
             <button class="tab active" onclick="switchTab('create')">Create Video</button>
             <button class="tab" onclick="switchTab('gallery')">Gallery</button>
+            <button class="tab" onclick="switchTab('videos')">Video List</button>
         </div>
 
         <!-- Create Tab -->
@@ -727,6 +891,25 @@
         <!-- Gallery Tab -->
         <div id="gallery-tab" class="tab-content">
             <div class="gallery" id="gallery"></div>
+        </div>
+
+        <!-- Video List Tab -->
+        <div id="videos-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Server Videos</h3>
+                <button class="btn btn-secondary" onclick="loadVideoList()" style="padding: 8px 16px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+            <div id="video-list-container" style="background: #1a1a1a; border-radius: 8px; padding: 20px; min-height: 400px;">
+                <div style="text-align: center; padding: 40px; color: #888;">
+                    <div class="spinner"></div>
+                    <p>Loading videos...</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -841,11 +1024,19 @@
                 detailsHtml += '</div>';
             }
             
+            const entryId = `entry-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
             messageDiv.innerHTML = `
                 <div class="console-message-header" style="cursor: ${details ? 'pointer' : 'default'}">
                     ${details ? '<span class="console-expand-icon">▸</span>' : '<span class="console-expand-icon" style="opacity:0">▸</span>'}
                     <span class="console-timestamp">[${timestamp}]</span>
-                    <span class="console-text">${message}</span>
+                    <span class="console-text" data-entry-id="${entryId}">${message}</span>
+                    <button class="console-entry-copy-btn" onclick="copyEntryToClipboard('${entryId}', event)" title="Copy this log entry">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                        </svg>
+                    </button>
                 </div>
                 ${detailsHtml}
             `;
@@ -914,9 +1105,78 @@
             }
         }
 
-        // Initialize console as collapsed
+        function copyEntryToClipboard(entryId, event) {
+            event.stopPropagation(); // Prevent message collapse
+            
+            const targetElement = document.querySelector(`[data-entry-id="${entryId}"]`);
+            const button = event.target.closest('.console-entry-copy-btn');
+            
+            if (targetElement && button) {
+                const textToCopy = targetElement.textContent;
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    // Visual feedback
+                    const originalText = button.innerHTML;
+                    button.classList.add('copied');
+                    button.innerHTML = `
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    `;
+                    
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                        button.innerHTML = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('Failed to copy to clipboard');
+                });
+            }
+        }
+
+        // Initialize console as collapsed and set up event delegation
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('console-panel').classList.add('collapsed');
+            
+            // Set up event delegation for video list action buttons
+            const videoListContainer = document.getElementById('video-list-container');
+            if (videoListContainer) {
+                console.log('Video list container found, setting up event delegation');
+                videoListContainer.addEventListener('click', function(event) {
+                    console.log('Click detected in video-list-container', event.target);
+                    
+                    const button = event.target.closest('.action-btn');
+                    console.log('Closest button found:', button);
+                    
+                    if (!button) return;
+                    
+                    const videoId = button.getAttribute('data-video-id');
+                    const action = button.getAttribute('data-action');
+                    
+                    console.log('Button clicked - Video ID:', videoId, 'Action:', action);
+                    
+                    if (!videoId || !action) {
+                        console.log('Missing videoId or action, aborting');
+                        return;
+                    }
+                    
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    console.log('Executing action:', action, 'for video:', videoId);
+                    
+                    if (action === 'delete') {
+                        console.log('Calling deleteServerVideo');
+                        deleteServerVideo(videoId);
+                    } else if (action === 'download') {
+                        console.log('Calling downloadServerVideo');
+                        downloadServerVideo(videoId);
+                    }
+                });
+            } else {
+                console.error('video-list-container not found!');
+            }
         });
 
         function switchTab(tabName) {
@@ -935,6 +1195,11 @@
             // Load gallery if switching to gallery tab
             if (tabName === 'gallery') {
                 loadGallery();
+            }
+            
+            // Load video list if switching to videos tab
+            if (tabName === 'videos') {
+                loadVideoList();
             }
         }
 
@@ -1315,6 +1580,245 @@
             }
         }
 
+        let videoListRefreshInterval = null;
+
+        async function loadVideoList() {
+            try {
+                logToConsole('Loading video list from server...', 'info');
+                const response = await fetch('/api/videos');
+                const result = await response.json();
+
+                const container = document.getElementById('video-list-container');
+
+                if (result.success && result.videos.length > 0) {
+                    // Format created_at timestamps
+                    const formatDate = (timestamp) => {
+                        const date = new Date(timestamp * 1000);
+                        return date.toLocaleString();
+                    };
+
+                    container.innerHTML = `
+                        <table class="video-list-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Video ID</th>
+                                    <th>Prompt</th>
+                                    <th>Model</th>
+                                    <th>Duration</th>
+                                    <th>Size</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.videos.map(video => {
+                                    const statusClass = video.status.replace('_', '_');
+                                    const isInProgress = video.status === 'in_progress' || video.status === 'queued';
+                                    const isCompleted = video.status === 'completed';
+                                    
+                                    return `
+                                        <tr>
+                                            <td>
+                                                ${isInProgress ? '<span class="spinner-inline"></span>' : ''}
+                                                <span class="status-badge ${statusClass}">${video.status}</span>
+                                            </td>
+                                            <td><code style="background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">${video.id.substring(0, 12)}...</code></td>
+                                            <td class="prompt-cell" title="${video.prompt}">${video.prompt || 'No prompt'}</td>
+                                            <td>${video.model}</td>
+                                            <td>${video.seconds}s</td>
+                                            <td>${video.size}</td>
+                                            <td>${formatDate(video.created_at)}</td>
+                                            <td>
+                                                <div class="video-actions">
+                                                    <button class="action-btn download" 
+                                                            data-video-id="${video.id}"
+                                                            data-action="download"
+                                                            onclick="event.preventDefault(); console.log('Download clicked'); downloadServerVideo('${video.id.replace(/'/g, "\\'")}');"
+                                                            ${!isCompleted ? 'disabled' : ''}>
+                                                        Download
+                                                    </button>
+                                                    <button class="action-btn delete" 
+                                                            data-video-id="${video.id}"
+                                                            data-action="delete"
+                                                            onclick="event.preventDefault(); console.log('Delete clicked for ${video.id}'); deleteServerVideo('${video.id.replace(/'/g, "\\'")}');"
+                                                            ${isInProgress ? 'disabled title="Cannot delete while video is processing"' : ''}>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+
+                    // Set up auto-refresh for in-progress videos
+                    const hasInProgress = result.videos.some(v => v.status === 'in_progress' || v.status === 'queued');
+                    if (hasInProgress && !videoListRefreshInterval) {
+                        videoListRefreshInterval = setInterval(() => {
+                            const activeTab = document.querySelector('.tab-content.active');
+                            if (activeTab && activeTab.id === 'videos-tab') {
+                                loadVideoList();
+                            } else {
+                                clearInterval(videoListRefreshInterval);
+                                videoListRefreshInterval = null;
+                            }
+                        }, 10000); // Refresh every 10 seconds
+                    } else if (!hasInProgress && videoListRefreshInterval) {
+                        clearInterval(videoListRefreshInterval);
+                        videoListRefreshInterval = null;
+                    }
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 60px; color: #888;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;">
+                                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                            </svg>
+                            <h3 style="color: #aaa;">No videos found</h3>
+                            <p>Create your first video to see it here!</p>
+                        </div>
+                    `;
+                }
+
+                logToConsole(`Video list loaded: ${result.videos?.length || 0} video(s) from server.`, 'success', {
+                    'Video Count': result.videos?.length || 0,
+                    'Has More': result.has_more,
+                    'Videos': result.videos
+                });
+            } catch (error) {
+                const container = document.getElementById('video-list-container');
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: #f87171;">
+                        <h3>Failed to load videos</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadVideoList()" style="margin-top: 16px;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+                logToConsole(`Failed to load video list: ${error.message}`, 'error', {
+                    'Error Type': error.name,
+                    'Message': error.message,
+                    'Stack': error.stack
+                });
+                console.error('Video list load error:', error);
+            }
+        }
+
+        async function downloadServerVideo(videoId) {
+            try {
+                logToConsole(`Downloading video ${videoId}...`, 'info');
+                // Note: This will download through the browser
+                window.location.href = `/videos/${videoId}.mp4`;
+                logToConsole(`Download started for video ${videoId}`, 'success');
+            } catch (error) {
+                logToConsole(`Failed to download video: ${error.message}`, 'error');
+                alert('Failed to download video');
+            }
+        }
+        
+        // Make it globally accessible
+        window.downloadServerVideo = downloadServerVideo;
+
+        async function deleteServerVideo(videoId) {
+            console.log('deleteServerVideo called with videoId:', videoId);
+            
+            if (!confirm(`Are you sure you want to delete video ${videoId}?`)) {
+                console.log('User cancelled deletion');
+                return;
+            }
+            
+            console.log('User confirmed deletion, proceeding...');
+            console.log('Video ID being sent:', videoId);
+            
+            try {
+                logToConsole(`Deleting video ${videoId}...`, 'info', {
+                    'Video ID': videoId,
+                    'URL': `/api/delete/${videoId}`
+                });
+                
+                const response = await fetch(`/api/delete/${videoId}`, {
+                    method: 'DELETE'
+                });
+                
+                // Log response status
+                logToConsole(`Delete response status: ${response.status}`, 'info');
+                
+                // Always try to parse JSON first to get the error message
+                const result = await response.json();
+                
+                // Now check if response was not OK and throw with the actual error message
+                if (!response.ok) {
+                    const errorMsg = result.error || `HTTP ${response.status}: ${response.statusText}`;
+                    logToConsole(`❌ Delete failed (${response.status})`, 'error', {
+                        'Error Message': errorMsg,
+                        'Status': result.status || 'unknown',
+                        'Full Response': result
+                    });
+                    throw new Error(errorMsg);
+                }
+                
+                logToConsole('Delete response received', 'info', {
+                    'Success': result.success,
+                    'Message': result.message,
+                    'API Deleted': result.api_deleted,
+                    'Local Deleted': result.local_deleted,
+                    'API Error': result.api_error || 'None',
+                    'Status': result.status,
+                    'Full Response': result
+                });
+                
+                // Check if API delete failed
+                if (result.api_error) {
+                    logToConsole(`⚠️ API delete failed`, 'error', {
+                        'Video ID': videoId,
+                        'Error Message': result.api_error,
+                        'Full API Error': result.api_error
+                    });
+                }
+                
+                if (result.success) {
+                    logToConsole(`✓ Video deleted from API`, 'success', {
+                        'Video ID': videoId,
+                        'Message': result.message,
+                        'API Deleted': result.api_deleted,
+                        'Local Files': 'Preserved (not deleted)'
+                    });
+                    loadVideoList(); // Refresh the list
+                } else {
+                    // Show specific error message
+                    const errorMsg = result.message || result.error || 'Delete failed';
+                    const apiError = result.api_error || 'Unknown error';
+                    
+                    logToConsole(`❌ Delete failed`, 'error', {
+                        'Video ID': videoId,
+                        'Error Message': errorMsg,
+                        'API Error': apiError,
+                        'Status': result.status || 'unknown'
+                    });
+                    
+                    if (result.status === 'in_progress' || result.status === 'queued') {
+                        alert(`Cannot delete video: The video is still ${result.status}. Please wait until it completes.`);
+                    } else {
+                        alert(`Delete failed: ${apiError}`);
+                        throw new Error(errorMsg);
+                    }
+                }
+            } catch (error) {
+                logToConsole(`❌ Exception during delete`, 'error', {
+                    'Error Type': error.name,
+                    'Error Message': error.message,
+                    'Stack': error.stack
+                });
+                alert('Failed to delete video: ' + error.message);
+            }
+        }
+        
+        // Make it globally accessible
+        window.deleteServerVideo = deleteServerVideo;
+
         function openVideo(videoPath) {
             document.getElementById('modal-video').src = videoPath;
             document.getElementById('video-modal').classList.add('active');
@@ -1341,11 +1845,17 @@
                     method: 'DELETE'
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
                     logToConsole(`Video deleted successfully: ${videoId}`, 'success', {
                         'Video ID': videoId,
+                        'API Deleted': result.api_deleted,
+                        'Local Deleted': result.local_deleted,
                         'Response': result
                     });
                     loadGallery();

@@ -41,16 +41,50 @@ def create_video_async(job_id, params, input_reference_path=None):
         video_id = result.get('id')
         job_status[job_id].update({
             'video_id': video_id,
+            'progress': 10,
             'message': 'Video creation started, waiting for completion...'
         })
         
-        # Poll for completion
-        final_result = client.wait_for_completion(
-            video_id,
-            poll_interval=3,
-            max_wait_time=600,
-            show_progress=False
-        )
+        # Poll for completion with progress updates
+        import time
+        max_wait_time = 600  # 10 minutes
+        poll_interval = 3
+        start_time = time.time()
+        elapsed = 0
+        
+        while elapsed < max_wait_time:
+            # Check video status
+            final_result = client.retrieve(video_id)
+            status = final_result.get('status')
+            
+            # Calculate progress (10-85% during waiting phase)
+            # Progress increases slowly over time
+            time_progress = min(75, int((elapsed / max_wait_time) * 75))
+            current_progress = 10 + time_progress
+            
+            # Update job status with current state
+            if status == 'queued':
+                job_status[job_id].update({
+                    'progress': current_progress,
+                    'message': 'Video queued on server...'
+                })
+            elif status == 'in_progress':
+                job_status[job_id].update({
+                    'progress': current_progress,
+                    'message': 'Generating video...'
+                })
+            elif status == 'completed':
+                break
+            elif status == 'failed':
+                break
+            else:
+                job_status[job_id].update({
+                    'progress': current_progress,
+                    'message': f'Status: {status}...'
+                })
+            
+            time.sleep(poll_interval)
+            elapsed = time.time() - start_time
         
         # Update status based on result
         if final_result.get('status') == 'completed':
@@ -60,21 +94,28 @@ def create_video_async(job_id, params, input_reference_path=None):
                 'message': 'Video completed, downloading...'
             })
             
-            # Download all variants
-            base_name = video_id
-            video_file = f"videos/{base_name}.mp4"
-            thumbnail_file = f"videos/{base_name}_thumbnail.webp"
-            spritesheet_file = f"videos/{base_name}_spritesheet.jpg"
+            # Create video-specific directory
+            video_dir = f"videos/{video_id}"
+            os.makedirs(video_dir, exist_ok=True)
             
-            # Ensure videos directory exists
-            os.makedirs('videos', exist_ok=True)
+            # Download all variants to video directory
+            video_file = f"{video_dir}/{video_id}.mp4"
+            thumbnail_file = f"{video_dir}/thumbnail.webp"
+            spritesheet_file = f"{video_dir}/spritesheet.jpg"
             
             client.save_video(video_id, video_file, variant='video')
             client.save_video(video_id, thumbnail_file, variant='thumbnail')
             client.save_video(video_id, spritesheet_file, variant='spritesheet')
             
-            # Save metadata
-            client.save_video_info(final_result, params)
+            # Save metadata to video directory
+            metadata_file = f"{video_dir}/metadata.json"
+            metadata = {
+                'api_response': final_result,
+                'creation_args': params,
+                'saved_at': datetime.now().isoformat()
+            }
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
             
             job_status[job_id].update({
                 'status': 'completed',
@@ -194,9 +235,30 @@ def get_gallery():
     try:
         videos = []
         if os.path.exists('videos'):
-            # Get all JSON files (metadata)
+            # Scan for video directories (new structure)
+            for item in os.listdir('videos'):
+                item_path = os.path.join('videos', item)
+                if os.path.isdir(item_path):
+                    video_id = item
+                    metadata_path = os.path.join(item_path, 'metadata.json')
+                    video_file = os.path.join(item_path, f'{video_id}.mp4')
+                    thumbnail_file = os.path.join(item_path, 'thumbnail.webp')
+                    
+                    if os.path.exists(metadata_path) and os.path.exists(video_file):
+                        with open(metadata_path, 'r') as f:
+                            metadata = json.load(f)
+                        
+                        videos.append({
+                            'id': video_id,
+                            'video_path': f'/videos/{video_id}/{video_id}.mp4',
+                            'thumbnail_path': f'/videos/{video_id}/thumbnail.webp',
+                            'metadata': metadata,
+                            'created_at': metadata.get('saved_at', '')
+                        })
+            
+            # Also support old flat structure for backward compatibility
             for filename in os.listdir('videos'):
-                if filename.endswith('.json'):
+                if filename.endswith('.json') and not os.path.isdir(os.path.join('videos', filename)):
                     json_path = os.path.join('videos', filename)
                     with open(json_path, 'r') as f:
                         metadata = json.load(f)
@@ -228,6 +290,39 @@ def get_gallery():
             'error': str(e)
         }), 500
 
+@app.route('/api/videos')
+def list_videos():
+    """Get list of all videos from the server"""
+    try:
+        client = SoraAPIClient()
+        result = client.list(limit=100)  # Get up to 100 videos
+        
+        videos_list = []
+        if 'data' in result:
+            for video in result['data']:
+                videos_list.append({
+                    'id': video.get('id'),
+                    'status': video.get('status'),
+                    'prompt': video.get('prompt', ''),
+                    'model': video.get('model', ''),
+                    'created_at': video.get('created_at', 0),
+                    'completed_at': video.get('completed_at'),
+                    'size': video.get('size', ''),
+                    'seconds': video.get('seconds', 0)
+                })
+        
+        return jsonify({
+            'success': True,
+            'videos': videos_list,
+            'has_more': result.get('has_more', False)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/videos/<path:filename>')
 def serve_video(filename):
     """Serve video files"""
@@ -237,32 +332,73 @@ def serve_video(filename):
 def delete_video(video_id):
     """Delete a video and its associated files"""
     try:
+        import shutil
         client = SoraAPIClient()
         
-        # Delete from API
+        print(f"\n=== DELETE REQUEST ===")
+        print(f"Video ID received: {video_id}")
+        print(f"Video ID length: {len(video_id)}")
+        print(f"Video ID repr: {repr(video_id)}")
+        
+        # First check video status
+        video_status = None
         try:
-            client.delete(video_id)
-        except:
-            pass  # Continue even if API delete fails
+            video_info = client.retrieve(video_id)
+            video_status = video_info.get('status')
+            print(f"Video status: {video_status}")
+            
+            if video_status in ['queued', 'in_progress']:
+                return jsonify({
+                    'success': False,
+                    'error': f'Cannot delete video while it is {video_status}. Please wait until the video is completed or has failed.',
+                    'status': video_status
+                }), 400
+        except Exception as e:
+            print(f"Warning: Could not check video status: {e}")
+            # Continue anyway - maybe it's a local-only video
         
-        # Delete local files
-        files_to_delete = [
-            f"videos/{video_id}.mp4",
-            f"videos/{video_id}_thumbnail.webp",
-            f"videos/{video_id}_spritesheet.jpg",
-            f"videos/{video_id}.json"
-        ]
+        # Delete from API ONLY (don't touch local files)
+        api_delete_success = False
+        api_delete_error = None
+        try:
+            print(f"Calling client.delete({video_id})...")
+            result = client.delete(video_id)
+            api_delete_success = True
+            print(f"✓ API delete successful: {result}")
+        except Exception as api_error:
+            api_delete_error = str(api_error)
+            print(f"✗ API delete failed: {api_error}")
+            import traceback
+            traceback.print_exc()
         
-        for filepath in files_to_delete:
-            if os.path.exists(filepath):
-                os.remove(filepath)
+        # NOTE: We do NOT delete local files - only delete via REST API
+        print(f"Local files preserved (not deleted)")
         
-        return jsonify({
-            'success': True,
-            'message': 'Video deleted successfully'
-        })
+        print(f"\n=== DELETE RESULT ===")
+        print(f"API deleted: {api_delete_success}")
+        print(f"API error: {api_delete_error}")
+        
+        if api_delete_success:
+            return jsonify({
+                'success': True,
+                'message': 'Video deleted from API (local files preserved)',
+                'api_deleted': True,
+                'local_deleted': False,
+                'api_error': None
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'API delete failed',
+                'api_deleted': False,
+                'local_deleted': False,
+                'api_error': api_delete_error
+            })
         
     except Exception as e:
+        print(f"Delete error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
