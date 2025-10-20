@@ -2247,9 +2247,13 @@
                 // Each frame in spritesheet is 174x100 pixels
                 const frameWidth = 174;
                 const frameHeight = 100;
-                const cols = 10;
-                const rows = 10;
+                
+                // Calculate actual number of frames based on spritesheet dimensions
+                const cols = Math.floor(spritesheet.width / frameWidth);
+                const rows = Math.floor(spritesheet.height / frameHeight);
                 const totalFrames = cols * rows;
+                
+                console.log(`Spritesheet: ${spritesheet.width}x${spritesheet.height}, Frames: ${cols}x${rows} = ${totalFrames} total`);
                 
                 // Set canvas to frame dimensions
                 canvas.width = frameWidth;
@@ -2264,9 +2268,17 @@
                 const fps = 10; // Play at 10 FPS for slower, more viewable playback
                 const frameDuration = 1000 / fps;
                 const loopPauseDuration = 1000; // 1 second pause between loops
-                let isLooping = false;
+                let shouldContinue = true;
+                
+                // Mark this container as having an active animation
+                activeAnimations.set(container, true);
                 
                 const animate = () => {
+                    // Check if animation should still run (user may have moved mouse away)
+                    if (!activeAnimations.has(container)) {
+                        return; // Stop animation if container was removed from active animations
+                    }
+                    
                     const row = Math.floor(currentFrame / cols);
                     const col = currentFrame % cols;
                     
@@ -2282,21 +2294,20 @@
                     
                     currentFrame++;
                     
-                    // Check if we've reached the end
+                    // Check if we've reached the end of all frames
                     if (currentFrame >= totalFrames) {
-                        currentFrame = 0;
-                        isLooping = true;
-                        // Pause at the end before looping
+                        currentFrame = 0; // Reset to beginning
+                        // Pause at the end before looping back to start
                         const animationId = setTimeout(animate, loopPauseDuration);
                         activeAnimations.set(container, animationId);
                     } else {
-                        isLooping = false;
                         // Continue animation at normal speed
                         const animationId = setTimeout(animate, frameDuration);
                         activeAnimations.set(container, animationId);
                     }
                 };
                 
+                // Start the animation loop
                 animate();
             } catch (error) {
                 console.error('Failed to load spritesheet:', error);
@@ -2307,12 +2318,13 @@
         }
 
         function stopSpritesheetAnimation(container, thumbnail, canvas) {
-            // Stop animation
+            // Stop animation by removing from active animations
+            // The animate function will check this and stop on next iteration
             const animationId = activeAnimations.get(container);
-            if (animationId) {
+            if (animationId && typeof animationId === 'number') {
                 clearTimeout(animationId);
-                activeAnimations.delete(container);
             }
+            activeAnimations.delete(container);
             
             // Show thumbnail, hide canvas
             thumbnail.style.display = 'block';
