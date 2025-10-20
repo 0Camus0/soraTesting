@@ -18,7 +18,7 @@ CORS(app)
 # Global dictionary to track job progress
 job_status = {}
 
-def create_video_async(job_id, params):
+def create_video_async(job_id, params, input_reference_path=None):
     """Background thread to create video and track progress"""
     try:
         client = SoraAPIClient()
@@ -32,6 +32,7 @@ def create_video_async(job_id, params):
         result = client.create(
             prompt=params['prompt'],
             model=params.get('model', 'sora-2'),
+            input_reference=input_reference_path,
             seconds=params.get('seconds'),
             size=params.get('size'),
             wait_for_completion=False
@@ -90,12 +91,19 @@ def create_video_async(job_id, params):
                 'message': f"Video generation failed: {final_result.get('status')}",
                 'result': final_result
             })
-            
+    
     except Exception as e:
         job_status[job_id].update({
             'status': 'error',
             'message': f'Error: {str(e)}'
         })
+    finally:
+        # Clean up temporary file if it exists
+        if input_reference_path and os.path.exists(input_reference_path):
+            try:
+                os.remove(input_reference_path)
+            except:
+                pass  # Ignore cleanup errors
 
 @app.route('/')
 def index():
@@ -106,7 +114,30 @@ def index():
 def create_video():
     """Endpoint to create a new video"""
     try:
-        data = request.json
+        # Check if this is a multipart request (with file) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Handle file upload
+            data = {
+                'prompt': request.form.get('prompt'),
+                'model': request.form.get('model', 'sora-2'),
+                'seconds': request.form.get('seconds'),
+                'size': request.form.get('size')
+            }
+            
+            # Handle optional file upload
+            input_reference_path = None
+            if 'input_reference' in request.files:
+                file = request.files['input_reference']
+                if file and file.filename:
+                    # Save file temporarily
+                    os.makedirs('temp', exist_ok=True)
+                    temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{file.filename}"
+                    input_reference_path = os.path.join('temp', temp_filename)
+                    file.save(input_reference_path)
+        else:
+            # JSON request (backward compatible)
+            data = request.json
+            input_reference_path = None
         
         # Generate unique job ID
         job_id = f"job_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
@@ -114,7 +145,7 @@ def create_video():
         # Start background thread
         thread = threading.Thread(
             target=create_video_async,
-            args=(job_id, data)
+            args=(job_id, data, input_reference_path)
         )
         thread.daemon = True
         thread.start()

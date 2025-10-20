@@ -101,6 +101,7 @@
 
         input[type="text"],
         input[type="number"],
+        input[type="file"],
         textarea,
         select {
             width: 100%;
@@ -111,7 +112,28 @@
             transition: border-color 0.3s;
         }
 
+        input[type="file"] {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: 600;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            opacity: 0.9;
+        }
+
         input:focus,
+        input[type="file"]:focus,
         textarea:focus,
         select:focus {
             outline: none;
@@ -375,6 +397,14 @@
                     <textarea id="prompt" required placeholder="Describe the video you want to generate..."></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label for="input_reference">Reference Image (Optional)</label>
+                    <input type="file" id="input_reference" accept="image/jpeg,image/png,image/webp" />
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        Upload an image to guide the video generation. Image resolution must match the selected output resolution.
+                    </small>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="model">Model</label>
@@ -457,12 +487,9 @@
         document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const formData = {
-                prompt: document.getElementById('prompt').value,
-                model: document.getElementById('model').value,
-                seconds: document.getElementById('seconds').value,
-                size: document.getElementById('size').value
-            };
+            // Check if file is uploaded
+            const fileInput = document.getElementById('input_reference');
+            const hasFile = fileInput.files && fileInput.files.length > 0;
 
             // Disable form
             document.getElementById('create-btn').disabled = true;
@@ -472,13 +499,39 @@
             document.getElementById('progress-fill').textContent = '0%';
 
             try {
-                const response = await fetch('/api/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
+                let response;
+                
+                if (hasFile) {
+                    // Use FormData for file upload
+                    const formData = new FormData();
+                    formData.append('prompt', document.getElementById('prompt').value);
+                    formData.append('model', document.getElementById('model').value);
+                    formData.append('seconds', document.getElementById('seconds').value);
+                    formData.append('size', document.getElementById('size').value);
+                    formData.append('input_reference', fileInput.files[0]);
+
+                    response = await fetch('/api/create', {
+                        method: 'POST',
+                        body: formData
+                        // Don't set Content-Type header - browser will set it with boundary
+                    });
+                } else {
+                    // Use JSON for simple request without file
+                    const jsonData = {
+                        prompt: document.getElementById('prompt').value,
+                        model: document.getElementById('model').value,
+                        seconds: document.getElementById('seconds').value,
+                        size: document.getElementById('size').value
+                    };
+
+                    response = await fetch('/api/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(jsonData)
+                    });
+                }
 
                 const result = await response.json();
 
@@ -535,6 +588,7 @@
         function resetForm() {
             document.getElementById('create-btn').disabled = false;
             document.getElementById('progress-container').classList.remove('active');
+            document.getElementById('input_reference').value = ''; // Clear file input
             currentJobId = null;
             if (statusCheckInterval) {
                 clearInterval(statusCheckInterval);

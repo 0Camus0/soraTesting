@@ -63,7 +63,7 @@ class SoraAPIClient:
         Args:
             prompt (str): Text prompt that describes the video to generate
             model (str): The video generation model to use. Defaults to "sora-2"
-            input_reference (file, optional): Optional image reference that guides generation
+            input_reference (str, optional): Path to image file reference that guides generation
             seconds (str, optional): Clip duration in seconds. Defaults to 4 seconds
             size (str, optional): Output resolution formatted as width x height. Defaults to 720x1280
             wait_for_completion (bool): If True, poll until video is complete. Defaults to False
@@ -73,41 +73,103 @@ class SoraAPIClient:
         """
         url = f"{self.base_url}/videos"
         
-        payload = {
-            "prompt": prompt,
-            "model": model
-        }
-        
+        # If input_reference is provided, use multipart/form-data
         if input_reference is not None:
-            payload["input_reference"] = input_reference
-        if seconds is not None:
-            payload["seconds"] = seconds
-        if size is not None:
-            payload["size"] = size
-        
-        try:
-            print(f"Creating video with prompt: '{prompt}'...")
-            response = requests.post(url, headers=self.headers, json=payload)
-            response.raise_for_status()
+            # Prepare multipart form data
+            files = {}
+            data = {
+                "prompt": prompt,
+                "model": model
+            }
             
-            result = response.json()
-            print("Video creation job submitted successfully!")
+            if seconds is not None:
+                data["seconds"] = seconds
+            if size is not None:
+                data["size"] = size
             
-            # Wait for completion if requested
-            if wait_for_completion:
-                video_id = result.get('id')
-                if video_id:
-                    result = self.wait_for_completion(video_id)
+            # Open the image file
+            try:
+                with open(input_reference, 'rb') as f:
+                    # Determine the MIME type based on file extension
+                    ext = os.path.splitext(input_reference)[1].lower()
+                    mime_type = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.webp': 'image/webp'
+                    }.get(ext, 'image/jpeg')
+                    
+                    files = {
+                        'input_reference': (os.path.basename(input_reference), f.read(), mime_type)
+                    }
+                    
+                    # Update headers for multipart request
+                    headers = {
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                    # Don't set Content-Type - requests will set it automatically with boundary
+                    
+                    print(f"Creating video with prompt: '{prompt}' and reference image '{input_reference}'...")
+                    response = requests.post(url, headers=headers, data=data, files=files)
+                    response.raise_for_status()
+                    
+                    result = response.json()
+                    print("Video creation job submitted successfully!")
+                    
+                    # Wait for completion if requested
+                    if wait_for_completion:
+                        video_id = result.get('id')
+                        if video_id:
+                            result = self.wait_for_completion(video_id)
+                    
+                    return result
+                    
+            except FileNotFoundError:
+                raise ValueError(f"Reference image file not found: {input_reference}")
+            except requests.exceptions.HTTPError as e:
+                print(f"HTTP Error: {e}")
+                print(f"Response: {e.response.text}")
+                raise
+            except requests.exceptions.RequestException as e:
+                print(f"Request Error: {e}")
+                raise
+            except Exception as e:
+                raise ValueError(f"Error reading reference image: {e}")
+        else:
+            # Use JSON payload when no file is provided
+            payload = {
+                "prompt": prompt,
+                "model": model
+            }
             
-            return result
+            if seconds is not None:
+                payload["seconds"] = seconds
+            if size is not None:
+                payload["size"] = size
             
-        except requests.exceptions.HTTPError as e:
-            print(f"HTTP Error: {e}")
-            print(f"Response: {e.response.text}")
-            raise
-        except requests.exceptions.RequestException as e:
-            print(f"Request Error: {e}")
-            raise
+            try:
+                print(f"Creating video with prompt: '{prompt}'...")
+                response = requests.post(url, headers=self.headers, json=payload)
+                response.raise_for_status()
+                
+                result = response.json()
+                print("Video creation job submitted successfully!")
+                
+                # Wait for completion if requested
+                if wait_for_completion:
+                    video_id = result.get('id')
+                    if video_id:
+                        result = self.wait_for_completion(video_id)
+                
+                return result
+                
+            except requests.exceptions.HTTPError as e:
+                print(f"HTTP Error: {e}")
+                print(f"Response: {e.response.text}")
+                raise
+            except requests.exceptions.RequestException as e:
+                print(f"Request Error: {e}")
+                raise
     
     def remix(self, video_id, prompt, wait_for_completion=False):
         """
