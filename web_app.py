@@ -93,9 +93,24 @@ def create_video_async(job_id, params, input_reference_path=None):
             })
     
     except Exception as e:
+        # Try to extract API error details
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e)
+        }
+        
+        # Check if it's an HTTP error with response
+        if hasattr(e, 'response') and hasattr(e.response, 'text'):
+            try:
+                import json
+                error_details['api_response'] = json.loads(e.response.text)
+            except:
+                error_details['api_response_text'] = e.response.text
+        
         job_status[job_id].update({
             'status': 'error',
-            'message': f'Error: {str(e)}'
+            'message': f'Error: {str(e)}',
+            'error_details': error_details
         })
     finally:
         # Clean up temporary file if it exists

@@ -556,6 +556,42 @@
             border-radius: 3px;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             white-space: pre-wrap;
+            user-select: text;
+            position: relative;
+        }
+
+        .console-copy-btn {
+            background: #3e3e3e;
+            border: 1px solid #4a4a4a;
+            color: #b0b0b0;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .console-copy-btn:hover {
+            background: #4a4a4a;
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+
+        .console-copy-btn.copied {
+            background: #4ade80;
+            color: #1e1e1e;
+            border-color: #4ade80;
+        }
+
+        .console-detail-value-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            flex: 1;
         }
 
         /* Message type colors */
@@ -771,10 +807,21 @@
                             ? JSON.stringify(value, null, 2) 
                             : value;
                         const valueClass = typeof value === 'object' ? 'json' : '';
+                        const copyBtnId = `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                        
                         detailsHtml += `
                             <div class="console-detail-row">
                                 <span class="console-detail-label">${key}:</span>
-                                <span class="console-detail-value ${valueClass}">${displayValue}</span>
+                                <div class="console-detail-value-wrapper">
+                                    <span class="console-detail-value ${valueClass}" data-copy-id="${copyBtnId}">${displayValue}</span>
+                                    ${typeof value === 'object' ? `<button class="console-copy-btn" data-copy-target="${copyBtnId}" onclick="copyToClipboard(this, event)">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                        </svg>
+                                        Copy
+                                    </button>` : ''}
+                                </div>
                             </div>
                         `;
                     }
@@ -791,7 +838,7 @@
             }
             
             messageDiv.innerHTML = `
-                <div class="console-message-header">
+                <div class="console-message-header" style="cursor: ${details ? 'pointer' : 'default'}">
                     ${details ? '<span class="console-expand-icon">▸</span>' : '<span class="console-expand-icon" style="opacity:0">▸</span>'}
                     <span class="console-timestamp">[${timestamp}]</span>
                     <span class="console-text">${message}</span>
@@ -799,11 +846,12 @@
                 ${detailsHtml}
             `;
             
-            // Add click handler for expandable messages
+            // Add click handler for expandable messages - only on the header
             if (details) {
-                messageDiv.addEventListener('click', function(e) {
+                const header = messageDiv.querySelector('.console-message-header');
+                header.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    this.classList.toggle('expanded');
+                    messageDiv.classList.toggle('expanded');
                 });
             }
             
@@ -829,6 +877,37 @@
             consoleMessageCount = 0;
             document.getElementById('console-badge').textContent = '0';
             logToConsole('Console cleared.', 'info');
+        }
+
+        function copyToClipboard(button, event) {
+            event.stopPropagation(); // Prevent message collapse
+            
+            const copyId = button.getAttribute('data-copy-target');
+            const targetElement = document.querySelector(`[data-copy-id="${copyId}"]`);
+            
+            if (targetElement) {
+                const textToCopy = targetElement.textContent;
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    // Visual feedback
+                    const originalText = button.innerHTML;
+                    button.classList.add('copied');
+                    button.innerHTML = `
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Copied!
+                    `;
+                    
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                        button.innerHTML = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('Failed to copy to clipboard');
+                });
+            }
         }
 
         // Initialize console as collapsed
@@ -997,11 +1076,30 @@
                         clearInterval(statusCheckInterval);
                         document.getElementById('status-message').textContent = '❌ ' + status.message;
                         
-                        logToConsole(`Video generation failed: ${status.message}`, 'error', {
+                        // Build comprehensive error details
+                        const errorDetails = {
                             'Status': status.status,
-                            'Message': status.message,
-                            'Full Response': status
-                        });
+                            'Message': status.message
+                        };
+                        
+                        // Include error_details if available (from backend)
+                        if (status.error_details) {
+                            errorDetails['Error Type'] = status.error_details.error_type;
+                            errorDetails['Error Message'] = status.error_details.error_message;
+                            
+                            if (status.error_details.api_response) {
+                                errorDetails['API Response'] = status.error_details.api_response;
+                            }
+                            
+                            if (status.error_details.api_response_text) {
+                                errorDetails['API Response Text'] = status.error_details.api_response_text;
+                            }
+                        }
+                        
+                        // Include full status
+                        errorDetails['Full Status'] = status;
+                        
+                        logToConsole(`Video generation failed: ${status.message}`, 'error', errorDetails);
                         
                         setTimeout(() => resetForm(), 3000);
                     }
