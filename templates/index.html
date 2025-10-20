@@ -1978,12 +1978,20 @@
 
         async function downloadServerVideo(videoId) {
             try {
-                logToConsole(`Downloading video ${videoId}...`, 'info');
-                // Note: This will download through the browser
-                window.location.href = `/videos/${videoId}.mp4`;
+                logToConsole(`Downloading video ${videoId}...`, 'info', {
+                    'Video ID': videoId,
+                    'Download URL': `/videos/${videoId}/${videoId}.mp4`
+                });
+                
+                // Download using the new folder structure
+                window.location.href = `/videos/${videoId}/${videoId}.mp4`;
+                
                 logToConsole(`Download started for video ${videoId}`, 'success');
             } catch (error) {
-                logToConsole(`Failed to download video: ${error.message}`, 'error');
+                logToConsole(`Failed to download video: ${error.message}`, 'error', {
+                    'Video ID': videoId,
+                    'Error': error.message
+                });
                 alert('Failed to download video');
             }
         }
