@@ -83,13 +83,34 @@ client = SoraAPIClient()
 
 # Test connection
 if client.test_connection():
-    # Generate video with custom parameters
-    result = client.generate_video(
+    # Create a video
+    video_job = client.create(
         prompt="Your video prompt here",
-        duration=5,           # Optional: video duration in seconds
-        resolution="1080p",   # Optional: video resolution
-        aspect_ratio="16:9"   # Optional: aspect ratio
+        seconds="5",          # Optional: video duration in seconds
+        size="1920x1080"      # Optional: video resolution (widthxheight)
     )
+    
+    # Get the video ID from the response
+    video_id = video_job['id']
+    
+    # Check video status
+    video_info = client.retrieve(video_id)
+    print(f"Video status: {video_info['status']}")
+    
+    # Once completed, download the video
+    if video_info['status'] == 'completed':
+        client.save_video(video_id, "output.mp4")
+    
+    # Create a remix of the video
+    remix_job = client.remix(
+        video_id=video_id,
+        prompt="Same scene but with different lighting"
+    )
+    
+    # List all your videos
+    videos = client.list(limit=10, order="desc")
+    for video in videos.get('data', []):
+        print(f"Video {video['id']}: {video['prompt']}")
 ```
 
 ## Project Structure
@@ -121,22 +142,140 @@ c:\dev\Sora\
 #### `__init__(api_key=None)`
 Initialize the client with an optional API key. If not provided, reads from `OPENAI_API_KEY` environment variable.
 
-#### `generate_video(prompt, model="sora-2", **kwargs)`
-Generate a video using the Sora 2 API.
+#### `create(prompt, model="sora-2", input_reference=None, seconds=None, size=None)`
+Create a video using the Sora 2 API.
 
 **Parameters:**
-- `prompt` (str): Text description of the video to generate
-- `model` (str): Model name (default: "sora-2")
-- `**kwargs`: Additional API parameters
+- `prompt` (str): Text prompt that describes the video to generate (Required)
+- `model` (str): The video generation model to use. Defaults to "sora-2"
+- `input_reference` (file): Optional image reference that guides generation
+- `seconds` (str): Clip duration in seconds. Defaults to 4 seconds
+- `size` (str): Output resolution formatted as width x height. Defaults to 720x1280
 
 **Returns:**
-- dict: API response with video generation information
+- dict: The newly created video job
+
+**Example:**
+```python
+result = client.create(
+    prompt="A serene sunset over a calm ocean",
+    model="sora-2",
+    seconds="5",
+    size="1920x1080"
+)
+```
+
+#### `remix(video_id, prompt)`
+Create a video remix based on an existing video.
+
+**Parameters:**
+- `video_id` (str): The identifier of the completed video to remix (Required)
+- `prompt` (str): Updated text prompt that directs the remix generation (Required)
+
+**Returns:**
+- dict: The newly created remix video job
+
+**Example:**
+```python
+result = client.remix(
+    video_id="video_123",
+    prompt="The same scene but now at sunrise"
+)
+```
+
+#### `list(after=None, limit=None, order=None)`
+List videos in the organization.
+
+**Parameters:**
+- `after` (str): Identifier for the last item from the previous pagination request
+- `limit` (int): Number of items to retrieve
+- `order` (str): Sort order by timestamp. Use 'asc' or 'desc'
+
+**Returns:**
+- dict: A paginated list of video jobs
+
+**Example:**
+```python
+videos = client.list(limit=10, order="desc")
+```
+
+#### `retrieve(video_id)`
+Retrieve information about a specific video.
+
+**Parameters:**
+- `video_id` (str): The identifier of the video to retrieve (Required)
+
+**Returns:**
+- dict: The video job matching the provided identifier
+
+**Example:**
+```python
+video = client.retrieve("video_123")
+```
+
+#### `delete(video_id)`
+Delete a video.
+
+**Parameters:**
+- `video_id` (str): The identifier of the video to delete (Required)
+
+**Returns:**
+- dict: Deletion confirmation response
+
+**Example:**
+```python
+result = client.delete("video_123")
+```
+
+#### `get_content(video_id, variant=None)`
+Download video content.
+
+**Parameters:**
+- `video_id` (str): The identifier of the video whose media to download (Required)
+- `variant` (str): The variant of the video to download
+
+**Returns:**
+- bytes: The video file content
+
+**Example:**
+```python
+content = client.get_content("video_123")
+```
+
+#### `save_video(video_id, filename, variant=None)`
+Download and save video content to a file.
+
+**Parameters:**
+- `video_id` (str): The identifier of the video to download (Required)
+- `filename` (str): The filename to save the video as (Required)
+- `variant` (str): The variant of the video to download
+
+**Returns:**
+- str: The path to the saved file
+
+**Example:**
+```python
+filepath = client.save_video("video_123", "my_video.mp4")
+```
 
 #### `test_connection()`
 Test the API connection.
 
 **Returns:**
 - bool: True if connection is successful
+
+## Available Endpoints
+
+The Sora 2 API client implements all official Video endpoints:
+
+- **POST /v1/videos** - Create a video
+- **POST /v1/videos/{video_id}/remix** - Create a video remix
+- **GET /v1/videos** - List videos
+- **GET /v1/videos/{video_id}** - Retrieve a specific video
+- **DELETE /v1/videos/{video_id}** - Delete a video
+- **GET /v1/videos/{video_id}/content** - Download video content
+
+All methods use `sora-2` as the default model.
 
 ## Troubleshooting
 
@@ -148,10 +287,6 @@ Test the API connection.
 - Check that your API key is valid
 - Verify you have access to the Sora 2 API
 - Check your internet connection
-
-## Note About the API Endpoint
-
-The example in `test.txt` uses `/v1/responses` endpoint with `gpt-5-nano` model, which appears to be a placeholder. The actual Sora 2 API client in this project uses the proper video generation endpoint (`/v1/video/generations`). You may need to adjust the endpoint and parameters based on the actual Sora 2 API documentation when it becomes available.
 
 ## License
 
