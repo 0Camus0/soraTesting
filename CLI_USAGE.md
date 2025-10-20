@@ -110,20 +110,30 @@ This displays:
 ### 5. Download a Video
 
 ```bash
-# Auto-generated filename: <video_id>.mp4
+# Download video only (auto-generated filename: <video_id>.mp4)
 python sora_api.py download --video-id video_abc123
+
+# Download all variants (video, thumbnail, spritesheet)
+python sora_api.py download --video-id video_abc123 --all
 
 # Custom filename
 python sora_api.py download --video-id video_abc123 --output my_video.mp4
 
-# Download specific variant
-python sora_api.py download --video-id video_abc123 --variant hd --output video.mp4
+# Download specific variant only
+python sora_api.py download --video-id video_abc123 --variant thumbnail
+python sora_api.py download --video-id video_abc123 --variant spritesheet
 ```
 
 **Options:**
 - `--video-id VIDEO_ID` - ID of the video to download (required)
 - `--output OUTPUT` - Output filename (default: <video_id>.mp4)
-- `--variant VARIANT` - Video variant to download
+- `--variant VARIANT` - Video variant to download (video, thumbnail, spritesheet)
+- `--all` - Download all variants (video, thumbnail, and spritesheet)
+
+**Note:** When using `--all`:
+- Video saved as: `<video_id>.mp4`
+- Thumbnail saved as: `<video_id>_thumbnail.webp`
+- Spritesheet saved as: `<video_id>_spritesheet.jpg`
 
 ### 6. Wait for Video Completion
 

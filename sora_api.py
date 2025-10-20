@@ -525,7 +525,8 @@ Examples:
     download_parser = subparsers.add_parser('download', help='Download video content')
     download_parser.add_argument('--video-id', type=str, required=True, help='ID of the video to download')
     download_parser.add_argument('--output', type=str, help='Output filename (default: <video_id>.mp4)')
-    download_parser.add_argument('--variant', type=str, help='Video variant to download')
+    download_parser.add_argument('--variant', type=str, help='Video variant to download (video, thumbnail, spritesheet)')
+    download_parser.add_argument('--all', action='store_true', help='Download video, thumbnail, and spritesheet')
     
     # WAIT command
     wait_parser = subparsers.add_parser('wait', help='Wait for a video to complete')
@@ -662,10 +663,35 @@ Examples:
             print(json.dumps(result, indent=2))
         
         elif args.command == 'download':
-            output = args.output or f"{args.video_id}.mp4"
-            
-            client.save_video(args.video_id, output, args.variant)
-            print(f"\nVideo saved to: {output}")
+            if args.all:
+                # Download all variants: video, thumbnail, and spritesheet
+                base_name = args.output.rsplit('.', 1)[0] if args.output else args.video_id
+                
+                print("Downloading all variants...")
+                print("-" * 60)
+                
+                # Download video
+                video_file = f"{base_name}.mp4"
+                client.save_video(args.video_id, video_file, variant='video')
+                print(f"✓ Video saved to: {video_file}")
+                
+                # Download thumbnail
+                thumbnail_file = f"{base_name}_thumbnail.webp"
+                client.save_video(args.video_id, thumbnail_file, variant='thumbnail')
+                print(f"✓ Thumbnail saved to: {thumbnail_file}")
+                
+                # Download spritesheet
+                spritesheet_file = f"{base_name}_spritesheet.jpg"
+                client.save_video(args.video_id, spritesheet_file, variant='spritesheet')
+                print(f"✓ Spritesheet saved to: {spritesheet_file}")
+                
+                print("-" * 60)
+                print(f"\nAll files downloaded successfully!")
+            else:
+                # Download single variant
+                output = args.output or f"{args.video_id}.mp4"
+                client.save_video(args.video_id, output, args.variant)
+                print(f"\nVideo saved to: {output}")
         
         elif args.command == 'wait':
             print(f"Waiting for video '{args.video_id}' to complete...")

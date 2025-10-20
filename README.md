@@ -90,11 +90,17 @@ python sora_api.py retrieve --video-id video_abc123
 #### Download a Video
 
 ```bash
-# Download with auto-generated filename
+# Download video only (auto-generated filename)
 python sora_api.py download --video-id video_abc123
+
+# Download all variants (video, thumbnail, spritesheet)
+python sora_api.py download --video-id video_abc123 --all
 
 # Download with custom filename
 python sora_api.py download --video-id video_abc123 --output my_video.mp4
+
+# Download specific variant only
+python sora_api.py download --video-id video_abc123 --variant thumbnail
 ```
 
 #### Wait for Video Completion
