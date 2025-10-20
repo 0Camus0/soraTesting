@@ -52,6 +52,11 @@ from flask_cors import CORS
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from api.sora_api import SoraAPIClient
 
+# Get project root directory (two levels up from this file)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+VIDEOS_DIR = os.path.join(PROJECT_ROOT, 'videos')
+TEMP_DIR = os.path.join(PROJECT_ROOT, 'temp')
+
 app = Flask(__name__)
 CORS(app)
 
@@ -173,20 +178,20 @@ def create_video_async(job_id: str, params: dict, input_reference_path: str = No
             })
             
             # Create video-specific directory
-            video_dir = f"videos/{video_id}"
+            video_dir = os.path.join(VIDEOS_DIR, video_id)
             os.makedirs(video_dir, exist_ok=True)
             
             # Download all variants to video directory
-            video_file = f"{video_dir}/{video_id}.mp4"
-            thumbnail_file = f"{video_dir}/thumbnail.webp"
-            spritesheet_file = f"{video_dir}/spritesheet.jpg"
+            video_file = os.path.join(video_dir, f"{video_id}.mp4")
+            thumbnail_file = os.path.join(video_dir, "thumbnail.webp")
+            spritesheet_file = os.path.join(video_dir, "spritesheet.jpg")
             
             client.save_video(video_id, video_file, variant='video')
             client.save_video(video_id, thumbnail_file, variant='thumbnail')
             client.save_video(video_id, spritesheet_file, variant='spritesheet')
             
             # Save metadata to video directory
-            metadata_file = f"{video_dir}/metadata.json"
+            metadata_file = os.path.join(video_dir, "metadata.json")
             metadata = {
                 'api_response': final_result,
                 'creation_args': params,
@@ -378,7 +383,7 @@ def remix_video_async(job_id: str, video_id: str, prompt: str) -> None:
             })
             
             # Create video-specific directory
-            video_dir = f"videos/{remix_video_id}"
+            video_dir = os.path.join(VIDEOS_DIR, remix_video_id)
             os.makedirs(video_dir, exist_ok=True)
             
             # Download the video
@@ -539,9 +544,9 @@ def create_video():
                 file = request.files['input_reference']
                 if file and file.filename:
                     # Save file temporarily
-                    os.makedirs('temp', exist_ok=True)
+                    os.makedirs(TEMP_DIR, exist_ok=True)
                     temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{file.filename}"
-                    input_reference_path = os.path.join('temp', temp_filename)
+                    input_reference_path = os.path.join(TEMP_DIR, temp_filename)
                     file.save(input_reference_path)
         else:
             # JSON request (backward compatible)
@@ -740,15 +745,16 @@ def get_gallery():
     """
     try:
         videos = []
-        if os.path.exists('videos'):
+        if os.path.exists(VIDEOS_DIR):
             # Scan for video directories (new structure)
-            for item in os.listdir('videos'):
-                item_path = os.path.join('videos', item)
+            for item in os.listdir(VIDEOS_DIR):
+                item_path = os.path.join(VIDEOS_DIR, item)
                 if os.path.isdir(item_path):
                     video_id = item
                     metadata_path = os.path.join(item_path, 'metadata.json')
                     video_file = os.path.join(item_path, f'{video_id}.mp4')
                     thumbnail_file = os.path.join(item_path, 'thumbnail.webp')
+                    spritesheet_file = os.path.join(item_path, 'spritesheet.jpg')
                     
                     if os.path.exists(video_file):
                         # Load metadata if it exists and is valid
@@ -772,14 +778,15 @@ def get_gallery():
                             'id': video_id,
                             'video_path': f'/videos/{video_id}/{video_id}.mp4',
                             'thumbnail_path': f'/videos/{video_id}/thumbnail.webp' if os.path.exists(thumbnail_file) else None,
+                            'spritesheet_path': f'/videos/{video_id}/spritesheet.jpg' if os.path.exists(spritesheet_file) else None,
                             'metadata': metadata,
                             'created_at': created_at
                         })
             
             # Also support old flat structure for backward compatibility
-            for filename in os.listdir('videos'):
-                if filename.endswith('.json') and not os.path.isdir(os.path.join('videos', filename)):
-                    json_path = os.path.join('videos', filename)
+            for filename in os.listdir(VIDEOS_DIR):
+                if filename.endswith('.json') and not os.path.isdir(os.path.join(VIDEOS_DIR, filename)):
+                    json_path = os.path.join(VIDEOS_DIR, filename)
                     try:
                         with open(json_path, 'r') as f:
                             content = f.read().strip()
@@ -794,11 +801,12 @@ def get_gallery():
                     video_file = f"{video_id}.mp4"
                     thumbnail_file = f"{video_id}_thumbnail.webp"
                     
-                    if os.path.exists(os.path.join('videos', video_file)):
+                    if os.path.exists(os.path.join(VIDEOS_DIR, video_file)):
                         videos.append({
                             'id': video_id,
                             'video_path': f'/videos/{video_file}',
                             'thumbnail_path': f'/videos/{thumbnail_file}',
+                            'spritesheet_path': None,
                             'metadata': metadata,
                             'created_at': metadata.get('saved_at', '')
                         })
@@ -908,7 +916,7 @@ def serve_video(filename):
         GET /videos/video_abc123/video_abc123.mp4
         GET /videos/video_abc123/thumbnail.webp
     """
-    return send_from_directory('videos', filename)
+    return send_from_directory(VIDEOS_DIR, filename)
 
 
 @app.route('/api/download/<video_id>', methods=['GET'])
@@ -950,7 +958,7 @@ def download_video_endpoint(video_id):
         print(f"[DOWNLOAD] Request for video: {video_id}")
         
         # Check if video file exists locally
-        video_dir = f"videos/{video_id}"
+        video_dir = os.path.join(VIDEOS_DIR, video_id)
         video_file = os.path.join(video_dir, f"{video_id}.mp4")
         
         if os.path.exists(video_file):
@@ -1185,7 +1193,7 @@ def delete_local_video(video_id):
         print(f"Video ID: {video_id}")
         
         # Delete local files
-        video_dir = f"videos/{video_id}"
+        video_dir = os.path.join(VIDEOS_DIR, video_id)
         
         if os.path.exists(video_dir):
             print(f"Deleting local directory: {video_dir}")
@@ -1216,11 +1224,14 @@ def delete_local_video(video_id):
 
 if __name__ == '__main__':
     # Ensure videos directory exists
-    os.makedirs('videos', exist_ok=True)
+    os.makedirs(VIDEOS_DIR, exist_ok=True)
+    os.makedirs(TEMP_DIR, exist_ok=True)
     
     print("=" * 60)
     print("Sora 2 API Web Interface")
     print("=" * 60)
+    print(f"\nProject root: {PROJECT_ROOT}")
+    print(f"Videos directory: {VIDEOS_DIR}")
     print("\nStarting server at http://localhost:5000")
     print("Press Ctrl+C to stop\n")
     print("=" * 60)
