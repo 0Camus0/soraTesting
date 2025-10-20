@@ -244,24 +244,45 @@ def get_gallery():
                     video_file = os.path.join(item_path, f'{video_id}.mp4')
                     thumbnail_file = os.path.join(item_path, 'thumbnail.webp')
                     
-                    if os.path.exists(metadata_path) and os.path.exists(video_file):
-                        with open(metadata_path, 'r') as f:
-                            metadata = json.load(f)
+                    if os.path.exists(video_file):
+                        # Load metadata if it exists and is valid
+                        metadata = {}
+                        if os.path.exists(metadata_path):
+                            try:
+                                with open(metadata_path, 'r') as f:
+                                    content = f.read().strip()
+                                    if content:  # Only parse if file has content
+                                        metadata = json.loads(content)
+                            except (json.JSONDecodeError, Exception) as e:
+                                print(f"Warning: Could not load metadata for {video_id}: {e}")
+                                # Use empty metadata as fallback
+                                metadata = {}
+                        
+                        # Get file modification time as fallback for created_at
+                        file_mtime = os.path.getmtime(video_file)
+                        created_at = metadata.get('saved_at', datetime.fromtimestamp(file_mtime).isoformat())
                         
                         videos.append({
                             'id': video_id,
                             'video_path': f'/videos/{video_id}/{video_id}.mp4',
-                            'thumbnail_path': f'/videos/{video_id}/thumbnail.webp',
+                            'thumbnail_path': f'/videos/{video_id}/thumbnail.webp' if os.path.exists(thumbnail_file) else None,
                             'metadata': metadata,
-                            'created_at': metadata.get('saved_at', '')
+                            'created_at': created_at
                         })
             
             # Also support old flat structure for backward compatibility
             for filename in os.listdir('videos'):
                 if filename.endswith('.json') and not os.path.isdir(os.path.join('videos', filename)):
                     json_path = os.path.join('videos', filename)
-                    with open(json_path, 'r') as f:
-                        metadata = json.load(f)
+                    try:
+                        with open(json_path, 'r') as f:
+                            content = f.read().strip()
+                            if content:
+                                metadata = json.loads(content)
+                            else:
+                                metadata = {}
+                    except (json.JSONDecodeError, Exception):
+                        metadata = {}
                         
                     video_id = filename.replace('.json', '')
                     video_file = f"{video_id}.mp4"
@@ -285,6 +306,9 @@ def get_gallery():
         })
         
     except Exception as e:
+        print(f"Gallery error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)

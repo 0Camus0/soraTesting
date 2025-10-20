@@ -1800,30 +1800,44 @@
                 const gallery = document.getElementById('gallery');
 
                 if (result.success && result.videos.length > 0) {
-                    gallery.innerHTML = result.videos.map(video => `
-                        <div class="video-card">
-                            <img src="${video.thumbnail_path}" 
-                                 class="video-thumbnail" 
-                                 alt="Thumbnail"
-                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 300 200%27%3E%3Crect fill=%27%23e9ecef%27 width=%27300%27 height=%27200%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%236c757d%27%3ENo Thumbnail%3C/text%3E%3C/svg%3E'"
-                                 onclick="openVideo('${video.video_path}')">
-                            <div class="video-info">
-                                <div class="video-prompt">${video.metadata.creation_args?.prompt || 'No prompt available'}</div>
-                                <div class="video-meta">
-                                    <span>${video.metadata.api_response?.model || 'sora-2'}</span>
-                                    <span>${video.metadata.api_response?.seconds || '8'}s</span>
-                                </div>
-                                <div class="video-actions">
-                                    <button class="btn btn-small btn-secondary" onclick="downloadVideo('${video.video_path}', '${video.id}')">
-                                        Download
-                                    </button>
-                                    <button class="btn btn-small btn-danger" onclick="deleteVideo('${video.id}')">
-                                        Delete
-                                    </button>
+                    gallery.innerHTML = result.videos.map(video => {
+                        const prompt = video.metadata?.creation_args?.prompt || 
+                                      video.metadata?.api_response?.prompt || 
+                                      'No prompt available';
+                        const model = video.metadata?.api_response?.model || 
+                                     video.metadata?.creation_args?.model || 
+                                     'sora-2';
+                        const seconds = video.metadata?.api_response?.seconds || 
+                                       video.metadata?.creation_args?.seconds || 
+                                       '8';
+                        const thumbnailPath = video.thumbnail_path || 
+                                            'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 300 200%27%3E%3Crect fill=%27%23e9ecef%27 width=%27300%27 height=%27200%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%236c757d%27%3ENo Thumbnail%3C/text%3E%3C/svg%3E';
+                        
+                        return `
+                            <div class="video-card">
+                                <img src="${thumbnailPath}" 
+                                     class="video-thumbnail" 
+                                     alt="Thumbnail"
+                                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 300 200%27%3E%3Crect fill=%27%23e9ecef%27 width=%27300%27 height=%27200%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%236c757d%27%3ENo Thumbnail%3C/text%3E%3C/svg%3E'"
+                                     onclick="openVideo('${video.video_path}')">
+                                <div class="video-info">
+                                    <div class="video-prompt">${prompt}</div>
+                                    <div class="video-meta">
+                                        <span>${model}</span>
+                                        <span>${seconds}s</span>
+                                    </div>
+                                    <div class="video-actions">
+                                        <button class="btn btn-small btn-secondary" onclick="downloadVideo('${video.video_path}', '${video.id}')">
+                                            Download
+                                        </button>
+                                        <button class="btn btn-small btn-danger" onclick="deleteVideo('${video.id}')">
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     gallery.innerHTML = `
                         <div class="empty-state">
