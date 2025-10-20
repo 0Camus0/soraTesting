@@ -2241,17 +2241,19 @@
 
                 const spritesheet = spritesheetCache.get(spritesheetPath);
                 
-                // Setup canvas
+                // Setup canvas with correct dimensions
                 const ctx = canvas.getContext('2d');
-                canvas.width = thumbnail.naturalWidth || thumbnail.width;
-                canvas.height = thumbnail.naturalHeight || thumbnail.height;
                 
-                // Spritesheet is typically 10x10 grid (100 frames)
+                // Each frame in spritesheet is 174x100 pixels
+                const frameWidth = 174;
+                const frameHeight = 100;
                 const cols = 10;
                 const rows = 10;
                 const totalFrames = cols * rows;
-                const frameWidth = spritesheet.width / cols;
-                const frameHeight = spritesheet.height / rows;
+                
+                // Set canvas to frame dimensions
+                canvas.width = frameWidth;
+                canvas.height = frameHeight;
                 
                 // Hide thumbnail, show canvas
                 thumbnail.style.display = 'none';
@@ -2267,13 +2269,13 @@
                     const col = currentFrame % cols;
                     
                     // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.clearRect(0, 0, frameWidth, frameHeight);
                     
-                    // Draw current frame
+                    // Draw current frame at exact size (no scaling)
                     ctx.drawImage(
                         spritesheet,
                         col * frameWidth, row * frameHeight, frameWidth, frameHeight,
-                        0, 0, canvas.width, canvas.height
+                        0, 0, frameWidth, frameHeight
                     );
                     
                     currentFrame = (currentFrame + 1) % totalFrames;
