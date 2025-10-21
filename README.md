@@ -40,7 +40,10 @@ For a visual, user-friendly experience:
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the web server from the src/app directory
+# Option 1: Run from project root (easiest)
+python run_web_app.py
+
+# Option 2: Run from the src/app directory
 cd src/app
 python web_app.py
 ```
@@ -224,7 +227,9 @@ c:\dev\Sora\
 ├── .gitignore              # Git ignore rules
 ├── .env                    # Environment variables (NOT in git)
 ├── requirements.txt        # Python dependencies
+├── run_web_app.py          # Web app launcher (run from root)
 ├── README.md               # This file
+├── LICENSE                 # Apache 2.0 + Commons Clause
 ├── CLI_USAGE.md            # CLI documentation
 ├── WEB_INTERFACE.md        # Web interface documentation
 ├── DEPLOYMENT.md           # Production deployment guide
